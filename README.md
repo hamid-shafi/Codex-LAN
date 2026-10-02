@@ -10,6 +10,12 @@ side threads/details, saved drafts, themes, unread indicators, and notifications
 Administrators approve devices, review reported/estimated usage, and configure
 the host through **Administration → Host setup**.
 
+Each response's **Activity → Progress log** keeps the public updates shown while
+Codex was working, even after the final answer arrives or the page is reloaded.
+Tool steps and their output remain in the Activity tab. These bounded, redacted
+logs are private room data stored on the host, not private reasoning or source
+files included in a repository export; older runs may have no archived updates.
+
 ## Start on a new Linux host
 
 You need Linux, Python 3.10+, Python's `venv` support, a working systemd user session,

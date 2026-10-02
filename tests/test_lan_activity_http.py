@@ -23,6 +23,8 @@ class LanActivityHTTPTests(unittest.IsolatedAsyncioTestCase):
         run_id = created["run"]["id"]
         item = {"id": "test-command", "type": "commandExecution", "command": "pytest -q",
                 "cwd": "/home/project", "status": "inProgress"}
+        await worker.event("item/completed", item={"id": "test-progress", "type": "agentMessage",
+                                                   "phase": "commentary", "text": "Running the focused tests."})
         await worker.event("item/started", item=item)
         await worker.event("item/commandExecution/outputDelta", itemId=item["id"], delta="3 passed\n")
         await worker.event("item/completed", item={**item, "status": "completed", "aggregatedOutput": "3 passed\n",
@@ -55,6 +57,28 @@ class LanActivityHTTPTests(unittest.IsolatedAsyncioTestCase):
         run = next(run for run in polled["runs"] if run["id"] == run_id)
         self.assertEqual(run["status"], "completed")
         self.assertNotIn("activities", run)
+        self.assertNotIn("progress_log", run)
+
+    async def test_public_progress_is_durable_and_room_authorized(self):
+        worker = await self.worker(self.a, "progress")
+        room = await self.room(self.a)
+        created = await self.ready_run(self.a, worker, room)
+        run_id = created["run"]["id"]
+        for identifier, text, phase in (("one", "Inspecting the code.", "commentary"),
+                                        ("two", "Focused tests passed.", "commentary"),
+                                        ("answer", "The change is ready.", "final_answer")):
+            await worker.event("item/completed", item={"id": identifier, "type": "agentMessage",
+                                                       "text": text, "phase": phase})
+        await worker.complete()
+        await self.until(lambda: self.service.store.get_run_internal(run_id)["status"] == "completed")
+        data = await self.request("GET", f"/api/rooms/{room['id']}/messages", self.a)
+        answer = next(message for message in data["messages"] if message["role"] == "assistant")
+        self.assertEqual(answer["content"], "The change is ready.")
+        self.assertEqual([entry["text"] for entry in answer["progress_log"]],
+                         ["Inspecting the code.", "Focused tests passed."])
+        self.assertEqual(Runtime(self.service.store, fixture.FakeAuth()).activity_snapshot(run_id)["progress_log"],
+                         answer["progress_log"])
+        await self.request("GET", f"/api/rooms/{room['id']}/messages", self.b, expected=403)
 
     async def test_old_paginated_message_keeps_log_after_latest_run_limit(self):
         room, run_id = await self.recorded_command()
@@ -74,6 +98,7 @@ class LanActivityHTTPTests(unittest.IsolatedAsyncioTestCase):
             before = page["messages"][0]["id"]
         self.assertIsNotNone(seen)
         self.assertTrue(any(entry.get("output") == "3 passed\n" for entry in seen["activities"]))
+        self.assertEqual(seen["progress_log"][0]["text"], "Running the focused tests.")
 
 
 if __name__ == "__main__":

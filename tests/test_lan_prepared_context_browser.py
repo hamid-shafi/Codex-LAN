@@ -119,6 +119,10 @@ class LanPreparedContextBrowserTests(unittest.IsolatedAsyncioTestCase):
 
         await activity_tab.focus()
         await activity_tab.press("ArrowRight")
+        progress_tab = tabs.get_by_role("tab", name="Progress log", exact=True)
+        await expect(progress_tab).to_have_attribute("aria-selected", "true")
+        await expect(progress_tab).to_be_focused()
+        await progress_tab.press("ArrowRight")
         await expect(context_tab).to_have_attribute("aria-selected", "true")
         await expect(activity_tab).to_have_attribute("aria-selected", "false")
         await expect(context_tab).to_be_focused()

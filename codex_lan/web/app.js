@@ -1835,6 +1835,11 @@ async function fetchEvents(roomId, loadVersion = null) {
     if (event.kind === "steered" && payload.user_message) mergeMessage(cache, payload.user_message);
     if (event.kind === "completed" && payload.message && (!cache.more || !cache.messages.length || timestamp(payload.message.created_at) >= timestamp(cache.messages[0].created_at))) mergeMessage(cache, payload.message);
     if (event.kind === "usage" && numeric(event.id) > numeric(run.usage_event_id)) { run.usage = payload; run.usage_event_id = numeric(event.id); }
+    if (event.kind === "activity_summary" && Array.isArray(payload.progress_log)) {
+      run.progress_log = payload.progress_log;
+      run.progress_log_count = payload.progress_log_count;
+      run.progress_log_truncated = payload.progress_log_truncated;
+    }
     if (run.terminal_snapshot) continue;
     if (numeric(event.id) <= numeric(run.last_event_id)) continue;
     const previousContext = run.context_overview;
@@ -1853,6 +1858,14 @@ async function fetchEvents(roomId, loadVersion = null) {
         if (index < 0) entries.push(payload.entry); else entries[index] = payload.entry;
         run.activities = entries;
       }
+    }
+    else if (event.kind === "progress") {
+      const entries = new Map((Array.isArray(run.progress_log) ? run.progress_log : []).map((entry) => [idOf(entry.id), entry]));
+      for (const removed of Array.isArray(payload.progress_removed_ids) ? payload.progress_removed_ids : []) entries.delete(idOf(removed));
+      if (payload.progress_entry?.id) entries.set(idOf(payload.progress_entry.id), payload.progress_entry);
+      run.progress_log = Array.isArray(payload.progress_log) ? payload.progress_log : [...entries.values()];
+      run.progress_log_count = payload.progress_log_count ?? run.progress_log_count;
+      run.progress_log_truncated = payload.progress_log_truncated ?? run.progress_log_truncated;
     }
     else if (event.kind === "usage") run.usage = payload;
     else if (event.kind === "status") { Object.assign(run, payload); if (payload.text) run.activity = payload.text; }
@@ -2154,17 +2167,22 @@ function messageRun(message, cache) {
   const contextOverview = terminalMessage
     ? mergeContextOverview(existing?.context_overview, messageContext)
     : mergeContextOverview(messageContext, existing?.context_overview);
-  if (!existing && !message.run_status && !message.run_error && !message.activities?.length && !message.latest_status_line && !contextOverview) return null;
+  const messageProgress = message.progress_log ?? message.run?.progress_log;
+  if (!existing && !message.run_status && !message.run_error && !message.activities?.length && !messageProgress?.length && !message.latest_status_line && !contextOverview) return null;
   // CODEX: Terminal messages carry the final log when lightweight run snapshots omit it.
   const activitySource = Array.isArray(message.activities) && !activeRun(existing) ? message : existing || message;
-  return { ...existing, id: existing?.id || message.run_id || message.id, status: message.run_status || existing?.status, error: message.run_error ?? existing?.error, activities: activitySource.activities ?? message.activities, activity_count: activitySource.activity_count ?? message.activity_count, activity_truncated: activitySource.activity_truncated ?? message.activity_truncated, latest_status_line: activitySource.latest_status_line ?? message.latest_status_line, context_overview: contextOverview };
+  const progressSource = Array.isArray(messageProgress) && (terminalMessage || !activeRun(existing)) ? message : existing || message;
+  return { ...existing, id: existing?.id || message.run_id || message.id, status: message.run_status || existing?.status, error: message.run_error ?? existing?.error, activities: activitySource.activities ?? message.activities, activity_count: activitySource.activity_count ?? message.activity_count, activity_truncated: activitySource.activity_truncated ?? message.activity_truncated, latest_status_line: activitySource.latest_status_line ?? message.latest_status_line, context_overview: contextOverview,
+    progress_log: progressSource === message ? messageProgress : progressSource.progress_log ?? messageProgress,
+    progress_log_count: progressSource.progress_log_count ?? message.run?.progress_log_count ?? message.progress_log_count,
+    progress_log_truncated: progressSource.progress_log_truncated ?? message.run?.progress_log_truncated ?? message.progress_log_truncated };
 }
 
 function activityPreferences(runId) {
   const key = `codex-lan-activity:${state.me?.id || ""}:${runId}`;
   let saved = {};
   try { saved = JSON.parse(sessionStorage.getItem(key) || "{}"); } catch {}
-  return { key, open: saved?.open === true, tab: saved?.tab === "context" ? "context" : "activity", level: ["summary", "steps", "output"].includes(saved?.level) ? saved.level : "steps", entries: saved?.entries && typeof saved.entries === "object" ? saved.entries : {} };
+  return { key, open: saved?.open === true, tab: ["activity", "progress", "context"].includes(saved?.tab) ? saved.tab : "activity", level: ["summary", "steps", "output"].includes(saved?.level) ? saved.level : "steps", entries: saved?.entries && typeof saved.entries === "object" ? saved.entries : {} };
 }
 
 function saveActivityPreferences(preferences) {
@@ -2225,6 +2243,61 @@ function activityLog(entries) {
     if (entry.output_truncated) parts.push("[Earlier output omitted by the server]");
     return parts.join("\n");
   }).join("\n\n");
+}
+
+function progressLogEntries(run) {
+  const entries = new Map();
+  for (const entry of Array.isArray(run?.progress_log) ? run.progress_log : []) {
+    if (entry && entry.id && typeof entry.text === "string" && entry.text.trim()) entries.set(idOf(entry.id), entry);
+  }
+  return [...entries.values()];
+}
+
+function progressLogText(run) {
+  const entries = progressLogEntries(run);
+  const text = entries.map((entry) => {
+    const date = timeValue(entry.started_at);
+    return `${date ? `[${date.toLocaleString()}]\n` : ""}${entry.text}${entry.truncated ? "\n[Update shortened by the server]" : ""}`;
+  }).join("\n\n");
+  return text + (run?.progress_log_truncated ? "\n\n[Earlier updates or text omitted by the server]" : "");
+}
+
+function updateProgressLog(panel, run, entries) {
+  const view = panel.querySelector(".activity-progress");
+  view.querySelector(".activity-progress-copy").disabled = !entries.length;
+  view.querySelector(".activity-progress-empty").hidden = !!entries.length;
+  const note = view.querySelector(".activity-progress-truncation");
+  note.hidden = !run.progress_log_truncated;
+  updateActivityText(note, "This is a bounded log. Earlier updates or parts of very long updates were omitted by the server.");
+  const list = view.querySelector(".activity-progress-list");
+  const existing = new Map([...list.children].map((node) => [node.dataset.entryId, node]));
+  const desired = [];
+  for (const entry of entries) {
+    const key = idOf(entry.id);
+    let row = existing.get(key);
+    if (!row) {
+      row = element("section", "activity-progress-entry"); row.dataset.entryId = key;
+      const heading = element("div", "activity-progress-entry-heading");
+      heading.append(element("span", "", "Public update"), element("time", "activity-progress-time"));
+      const text = element("div", "activity-progress-text"); text.tabIndex = 0; text.setAttribute("aria-label", "Public progress message");
+      row.append(heading, text, element("p", "activity-progress-entry-truncation", "This long update was shortened by the server."));
+    }
+    const date = timeValue(entry.started_at);
+    const time = row.querySelector("time");
+    updateActivityText(time, date ? timeLabel(entry.started_at) : ""); time.hidden = !date;
+    if (date) { time.dateTime = date.toISOString(); time.title = date.toLocaleString(); }
+    const text = row.querySelector(".activity-progress-text");
+    updateActivityText(text, entry.text); text.dir = direction(text.textContent);
+    row.querySelector(".activity-progress-entry-truncation").hidden = !entry.truncated;
+    desired.push(row);
+  }
+  const keys = new Set(desired.map((row) => row.dataset.entryId));
+  for (const row of [...list.children]) if (!keys.has(row.dataset.entryId)) {
+    if (selectedWithin(row)) state.selectionRefreshPending = true;
+    else row.remove();
+  }
+  let position = list.firstChild;
+  for (const row of desired) { if (row === position) position = position.nextSibling; else list.insertBefore(row, position); }
 }
 
 let activityPanelSequence = 0;
@@ -2482,8 +2555,10 @@ function createActivityPanel(panel, runId) {
   const panelId = `activity-panel-${++activityPanelSequence}`;
   const tabs = element("div", "activity-tabs"); tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "Response details");
   const activityView = element("div", "activity-view"); activityView.id = `${panelId}-activity-panel`; activityView.setAttribute("role", "tabpanel");
+  const progressView = element("div", "activity-progress"); progressView.id = `${panelId}-progress-panel`; progressView.setAttribute("role", "tabpanel");
   const contextView = element("div", "activity-context"); contextView.id = `${panelId}-context-panel`; contextView.setAttribute("role", "tabpanel");
-  for (const [tab, label, controlled] of [["activity", "Activity", activityView], ["context", "Prepared context", contextView]]) {
+  const tabNames = ["activity", "progress", "context"];
+  for (const [tab, label, controlled] of [["activity", "Activity", activityView], ["progress", "Progress log", progressView], ["context", "Prepared context", contextView]]) {
     const button = element("button", "activity-tab", label); button.type = "button"; button.dataset.tab = tab;
     button.id = `${panelId}-${tab}-tab`; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", controlled.id);
     controlled.setAttribute("aria-labelledby", button.id);
@@ -2493,7 +2568,9 @@ function createActivityPanel(panel, runId) {
     button.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
-      const target = event.key === "ArrowLeft" || event.key === "Home" ? "activity" : "context";
+      const index = tabNames.indexOf(tab);
+      const target = event.key === "Home" ? tabNames[0] : event.key === "End" ? tabNames.at(-1)
+        : tabNames[(index + (event.key === "ArrowLeft" ? -1 : 1) + tabNames.length) % tabNames.length];
       preferences.tab = target; saveActivityPreferences(preferences); updateActivityPanel(panel, panel._run);
       tabs.querySelector(`.activity-tab[data-tab="${target}"]`).focus();
     });
@@ -2519,6 +2596,17 @@ function createActivityPanel(panel, runId) {
   const historyNote = element("p", "activity-history-note"); historyNote.hidden = true;
   const list = element("div", "activity-steps");
   activityView.append(toolbar, overview, latest, historyNote, list);
+  const progressHeader = element("div", "activity-progress-header");
+  progressHeader.append(element("strong", "", "Updates from this response"));
+  const progressCopy = element("button", "button subtle activity-progress-copy", "Copy log"); progressCopy.type = "button";
+  progressCopy.setAttribute("aria-label", "Copy progress log");
+  progressCopy.addEventListener("click", () => copyText(progressLogText(panel._run), progressCopy));
+  progressHeader.append(progressCopy);
+  const progressDescription = element("p", "activity-progress-description", "Public messages shown while Codex was working. Tool output is kept in Activity.");
+  const progressEmpty = element("p", "activity-progress-empty", "No public progress messages were recorded for this response.");
+  const progressNote = element("p", "activity-progress-truncation"); progressNote.hidden = true;
+  const progressList = element("div", "activity-progress-list"); progressList.tabIndex = 0; progressList.setAttribute("aria-label", "Saved public progress messages");
+  progressView.append(progressHeader, progressDescription, progressNote, progressEmpty, progressList);
   const contextHeader = element("div", "activity-context-header");
   const contextHeading = element("div", "activity-context-heading");
   contextHeading.append(element("strong", "", "Content prepared locally for this turn"), element("span", "activity-context-captured"));
@@ -2528,7 +2616,7 @@ function createActivityPanel(panel, runId) {
   contextHeader.append(contextHeading, contextCopy);
   const disclaimer = element("p", "activity-context-disclaimer", "This shows bounded content observed locally. The provider’s exact serialized prompt, hidden prompts, hidden reasoning, and opaque compacted memory are unavailable.");
   contextView.append(contextHeader, disclaimer, element("div", "activity-context-body"));
-  details.append(summary, tabs, activityView, contextView); details.open = preferences.open;
+  details.append(summary, tabs, activityView, progressView, contextView); details.open = preferences.open;
   details.addEventListener("toggle", () => {
     preferences.open = details.open; saveActivityPreferences(preferences);
     if (details.open) state.follow = false;
@@ -2556,11 +2644,12 @@ function createActivityEntry(panel, entry) {
 function updateActivityPanel(panel, run) {
   if (!run) { panel.hidden = true; return; }
   const entries = activityEntries(run);
+  const progressEntries = progressLogEntries(run);
   const hasContext = !!normalizedContextOverview(run.context_overview);
   const publicStatus = typeof run.latest_status_line === "string" ? run.latest_status_line.trim() : "";
   const running = activeRun(run);
   const stopped = ["cancelled", "canceled", "stopped"].includes(run.status);
-  panel.hidden = !entries.length && !publicStatus && !running && !stopped && !hasContext;
+  panel.hidden = !entries.length && !progressEntries.length && !publicStatus && !running && !stopped && !hasContext;
   if (panel.hidden) return;
   const runId = idOf(run.id || run.run_id);
   if (panel._runId !== runId) createActivityPanel(panel, runId);
@@ -2579,7 +2668,7 @@ function updateActivityPanel(panel, run) {
   panel.querySelector(".activity-current-label").dir = direction(panel.querySelector(".activity-current-label").textContent);
   panel.querySelector(".activity-dot").hidden = !running;
   panel.dataset.status = connection || browserOffline ? "reconnecting" : running ? "running" : failed.length || run.status === "failed" ? "failed" : "completed";
-  panel.querySelector(".activity-current").hidden = !!connection || browserOffline || (!running && (!!entries.length || hasContext));
+  panel.querySelector(".activity-current").hidden = !!connection || browserOffline || (!running && (!!entries.length || !!progressEntries.length || hasContext));
   const connectionCard = panel.querySelector(".run-connection"); connectionCard.hidden = !connection && !browserOffline;
   if (!connectionCard.hidden) {
     updateActivityText(connectionCard.querySelector(".run-connection-title"), label);
@@ -2605,18 +2694,22 @@ function updateActivityPanel(panel, run) {
   if (interrupted.length) counts.push(`${interrupted.length} stopped`);
   updateActivityText(panel.querySelector(".activity-counts"), counts.join(" · "));
   const total = Math.max(entries.length, numeric(run.activity_count));
-  updateActivityText(panel.querySelector(".activity-disclosure-label"), `Activity · ${total} ${total === 1 ? "step" : "steps"}`);
+  const progressCount = Math.max(progressEntries.length, numeric(run.progress_log_count));
+  const disclosureLabel = total ? `Activity · ${total} ${total === 1 ? "step" : "steps"}` : "Activity";
+  updateActivityText(panel.querySelector(".activity-disclosure-label"), `${disclosureLabel}${progressCount ? ` · ${progressCount} ${progressCount === 1 ? "update" : "updates"}` : ""}`);
   const historyNote = panel.querySelector(".activity-history-note"); historyNote.hidden = !run.activity_truncated;
   updateActivityText(historyNote, `Showing the latest ${entries.length} steps. Counts below refer to these retained steps; earlier details were omitted by the server.`);
-  panel.querySelector(".activity-details").hidden = !entries.length && !publicStatus && !hasContext;
+  panel.querySelector(".activity-details").hidden = !entries.length && !progressEntries.length && !publicStatus && !hasContext;
   panel.querySelector(".activity-details").dataset.level = preferences.level;
-  const selectedTab = preferences.tab === "context" ? "context" : "activity";
+  const selectedTab = ["activity", "progress", "context"].includes(preferences.tab) ? preferences.tab : "activity";
   for (const button of panel.querySelectorAll(".activity-tab")) {
     const selected = button.dataset.tab === selectedTab;
     button.setAttribute("aria-selected", String(selected)); button.tabIndex = selected ? 0 : -1;
   }
   panel.querySelector(".activity-view").hidden = selectedTab !== "activity";
+  panel.querySelector(".activity-progress").hidden = selectedTab !== "progress";
   panel.querySelector(".activity-context").hidden = selectedTab !== "context";
+  if (selectedTab === "progress") updateProgressLog(panel, run, progressEntries);
   renderContextOverview(panel, run.context_overview);
   for (const button of panel.querySelectorAll(".activity-level")) button.setAttribute("aria-pressed", String(button.dataset.level === preferences.level));
   const overview = panel.querySelector(".activity-overview"); overview.hidden = preferences.level !== "summary";

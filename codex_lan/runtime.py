@@ -19,7 +19,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .activity import ActivityLog, latest_public_line, redact
+from .activity import ActivityLog, MAX_PROGRESS_MESSAGE, latest_public_line, redact
 from .media import MAX_GENERATED_IMAGE_BYTES, image_extension, image_mime
 from .model_registry import model_catalog, read_model_registry
 from .usage_estimator import MAX_TOKEN_COUNT, estimate_usage, supports_fast
@@ -80,7 +80,7 @@ RESPONSE_DELTA_FLUSH_SECONDS = 0.25
 RESPONSE_STATUS_REFRESH_SECONDS = 1.0
 EVENT_BATCH_FLUSH_SECONDS = 0.25
 MAX_EVENT_BATCH = 256
-BATCHED_EVENT_KINDS = frozenset({"delta", "activity", "usage"})
+BATCHED_EVENT_KINDS = frozenset({"delta", "activity", "usage", "progress"})
 # CODEX: Bound one unattended response by both wall time and the same published-credit estimate used by quota accounting.
 MAX_RUN_SECONDS = 45 * 60
 MAX_RUN_CREDITS_MICROS = 250_000_000
@@ -584,6 +584,9 @@ class LiveRun:
     response_status_item_id: str | None = None
     response_status_updated_at: float = 0.0
     response_flush_handle: object = None
+    progress_started_at: dict = field(default_factory=dict)
+    progress_checkpoint_at: dict = field(default_factory=dict)
+    progress_checkpoint_versions: dict = field(default_factory=dict)
     context_overview: dict = field(default_factory=dict)
     context_compaction_ids: set = field(default_factory=set)
     safety_reason: str | None = None
@@ -724,6 +727,63 @@ class Runtime:
                 "latest_status_line": live.latest_status_line,
             })
 
+    def _checkpoint_progress_item(self, live, item_id, *, force=False, allow_unphased=False):
+        """CODEX: Persist only public updates, never reasoning or the final-answer phase."""
+        phase = live.phases.get(item_id)
+        if phase not in {None, "commentary"}:
+            removed = live.activity_log.remove_progress(item_id)
+            if removed is not None:
+                self.emit(live, "progress", removed)
+            return
+        if phase is None and not allow_unphased:
+            return
+        text = live.items.get(item_id, "")
+        bounded_text = text[:MAX_PROGRESS_MESSAGE * 2]
+        if not bounded_text.strip():
+            return
+        now = time.monotonic()
+        if not force and now - live.progress_checkpoint_at.get(item_id, 0) < 1.0:
+            return
+        live.progress_checkpoint_at[item_id] = now
+        version = (phase, len(text), hash(bounded_text))
+        if live.progress_checkpoint_versions.get(item_id) == version:
+            return
+        live.progress_checkpoint_versions[item_id] = version
+        payload = live.activity_log.progress(
+            item_id, self._safe_response_text(bounded_text),
+            started_at=live.progress_started_at.get(item_id),
+            truncated=len(text) > MAX_PROGRESS_MESSAGE,
+        )
+        if payload is not None:
+            self.emit(live, "progress", payload)
+
+    def _checkpoint_earlier_progress(self, live, item_id):
+        """CODEX: A later public message distinguishes legacy updates from the last answer."""
+        earlier_id = None
+        for identifier in live.items:
+            if identifier == item_id:
+                break
+            if live.items[identifier].strip():
+                earlier_id = identifier
+        if earlier_id is not None:
+            self._checkpoint_progress_item(live, earlier_id, force=True, allow_unphased=True)
+
+    def _finalize_progress(self, live, status):
+        """CODEX: Preserve interrupted public text and reserve the last legacy message as final."""
+        nonempty = [key for key, text in live.items.items() if text.strip()]
+        last = nonempty[-1] if nonempty else None
+        explicit_final = any(live.phases.get(key) == "final_answer" for key in nonempty)
+        for item_id in nonempty:
+            if status == "completed" and not explicit_final and item_id == last and live.phases.get(item_id) is None:
+                removed = live.activity_log.remove_progress(item_id)
+                if removed is not None:
+                    self.emit(live, "progress", removed)
+                continue
+            self._checkpoint_progress_item(
+                live, item_id, force=True,
+                allow_unphased=status != "completed" or explicit_final or item_id != last,
+            )
+
     def _flush_response_deltas(self, live, force_status=False):
         """CODEX: Coalesce tiny native response frames before SQLite and redaction work."""
         handle = live.response_flush_handle
@@ -732,6 +792,7 @@ class Runtime:
             handle.cancel()
         if not live.response_event_chunks:
             return
+        updated_items = list(live.response_pending_chunks)
         for item_id, chunks in live.response_pending_chunks.items():
             live.items[item_id] = (live.items.get(item_id, "") + "".join(chunks))[:MAX_RESPONSE_CHARACTERS]
         event_text = "".join(live.response_event_chunks)
@@ -748,6 +809,8 @@ class Runtime:
             )
             live.response_status_updated_at = now
         self._emit_response_text(live, event_text)
+        for item_id in updated_items:
+            self._checkpoint_progress_item(live, item_id, allow_unphased=True)
 
     def _schedule_response_flush(self, live):
         if live.response_flush_handle is not None:
@@ -765,7 +828,10 @@ class Runtime:
         """CODEX: Keep live text immediate while batching durable delta events."""
         new_item = item_id not in live.items
         if new_item:
+            self._flush_response_deltas(live, force_status=True)
+            self._checkpoint_earlier_progress(live, item_id)
             live.items[item_id] = ""
+            live.progress_started_at.setdefault(item_id, time.time())
             if len(live.items) > 1:
                 live.response_item_separators.add(item_id)
         pending_length = live.response_pending_lengths.get(item_id, 0)
@@ -1186,6 +1252,8 @@ class Runtime:
             try:
                 value = json.loads(row["payload"])
                 log.restore(value.get("activities", []), value.get("activity_count"), value.get("activity_truncated", False))
+                log.restore_progress(value.get("progress_log", []), value.get("progress_log_count"),
+                                     value.get("progress_log_truncated", False))
                 latest_line = latest_public_line(value.get("latest_status_line", ""))
                 context_overview = _safe_context_overview(value.get("context_overview"))
             except (ValueError, TypeError, AttributeError):
@@ -1219,6 +1287,26 @@ class Runtime:
                     context_overview["content"] = candidate["content"]
                 if "content" in context_overview:
                     break
+        if not row:
+            progress_rows = self._activity_event_payloads(run_id, ("progress",), 512)
+            progress_entries = OrderedDict()
+            progress_count = 0
+            progress_truncated = len(progress_rows) == 512
+            for event in reversed(progress_rows):
+                try:
+                    payload = json.loads(event["payload"])
+                    for identifier in payload.get("progress_removed_ids", [])[:80]:
+                        progress_entries.pop(identifier, None)
+                    entry = payload.get("progress_entry")
+                    if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                        progress_entries[entry["id"]] = entry
+                    count = payload.get("progress_log_count")
+                    if isinstance(count, int) and not isinstance(count, bool):
+                        progress_count = count
+                    progress_truncated |= bool(payload.get("progress_log_truncated"))
+                except (ValueError, TypeError, AttributeError):
+                    continue
+            log.restore_progress(list(progress_entries.values()), progress_count, progress_truncated)
         if context_overview is None or "content" not in context_overview:
             started_rows = self._activity_event_payloads(run_id, ("started",), 1)
             started_row = started_rows[0] if started_rows else None
@@ -1815,6 +1903,8 @@ class Runtime:
         if live.safety_reason:
             status, error = "interrupted", live.safety_reason
         self._flush_response_deltas(live, force_status=True)
+        self._flush_response_redactions(live)
+        self._finalize_progress(live, status)
         latest_line = live.latest_status_line
         for entry in live.activity_log.finish(status):
             self.emit_activity(live, entry)
@@ -1833,7 +1923,6 @@ class Runtime:
         while len(self.activity_cache) > 48:
             self.activity_cache.popitem(last=False)
         error = redact(error, 2000) if error else error
-        self._flush_response_redactions(live)
         text = self._safe_response_text(live.text(final=True))
         if live.generated_image_error:
             warning = "The generated image could not be safely attached. Please generate it again."
@@ -1843,6 +1932,7 @@ class Runtime:
         message = self.store.finish_run(
             live.run["id"], status, text, error=error, attachment_ids=attachments
         )
+        message.update(live.activity_log.progress_snapshot())
         for item_id, attachment in sorted(
                 live.generated_attachments.items(),
                 key=lambda pair: live.generated_attachment_order.get(
@@ -1953,7 +2043,12 @@ class Runtime:
             item = params.get("item", {})
             item_id, kind = item.get("id", "answer"), item.get("type")
             if kind == "agentMessage":
-                live.phases[item_id] = item.get("phase")
+                if item.get("phase") is not None or item_id not in live.phases:
+                    live.phases[item_id] = item.get("phase")
+                live.progress_started_at.setdefault(item_id, time.time())
+                self._checkpoint_earlier_progress(live, item_id)
+                if method == "item/started":
+                    self._checkpoint_progress_item(live, item_id, force=True, allow_unphased=True)
                 if method == "item/completed":
                     live.response_redactions.pop(item_id, None)
                     old = live.items.get(item_id, "")
@@ -1967,6 +2062,7 @@ class Runtime:
                                                 or item_id in live.response_item_separators) else ""
                         live.response_item_separators.discard(item_id)
                         self._emit_response_text(live, separator + text[len(old):])
+                    self._checkpoint_progress_item(live, item_id, force=True, allow_unphased=True)
             elif method == "item/completed" and self._queue_generated_image(live, item):
                 pass
             else:

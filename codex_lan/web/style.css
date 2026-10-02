@@ -809,7 +809,7 @@ h1, h2, h3, p { margin-top: 0; }
 .activity-tab:hover { color: var(--text); background: var(--soft); }
 .activity-tab[aria-selected="true"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 25%, var(--line)); background: var(--accent-soft); }
 .activity-tab:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent); outline-offset: 1px; }
-.activity-view, .activity-context { min-width: 0; }
+.activity-view, .activity-context, .activity-progress { min-width: 0; }
 .activity-view > .activity-toolbar { border-top: 0; }
 .activity-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 11px 10px; border-top: 1px solid var(--line); }
 .activity-levels { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
@@ -823,6 +823,22 @@ h1, h2, h3, p { margin-top: 0; }
 .connector-ready-note { padding: 12px 14px; background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; color: var(--text); }
 .activity-history-note { font-size: 11px; padding: 0 13px 10px; margin: 0; color: var(--warning); }
 .activity-steps { padding: 0 10px 9px; }
+.activity-progress { padding: 11px; }
+.activity-progress-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.activity-progress-header strong { color: var(--text); font-size: 12px; font-weight: 600; }
+.activity-progress-copy { flex: 0 0 auto; min-height: 29px; padding: 4px 8px; font-size: 11px; white-space: nowrap; }
+.activity-progress-description { margin: 4px 0 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.activity-progress-list { display: grid; gap: 8px; max-height: min(480px, 60dvh); overflow: auto; scrollbar-width: thin; overscroll-behavior: contain; border-radius: 8px; }
+.activity-progress-list:empty { display: none; }
+.activity-progress-entry { min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: color-mix(in srgb, var(--surface) 86%, transparent); }
+.activity-progress-entry-heading { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+.activity-progress-time { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.activity-progress-text { color: var(--text); font-size: 12px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; unicode-bidi: plaintext; user-select: text; }
+.activity-progress-text[dir="rtl"] { text-align: right; }
+.activity-progress-text:focus-visible, .activity-progress-list:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent); outline-offset: -2px; }
+.activity-progress-empty { margin: 0; padding: 13px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 11px; line-height: 1.6; text-align: center; }
+.activity-progress-truncation, .activity-progress-entry-truncation { margin: 0 0 9px; color: var(--warning); font-size: 11px; line-height: 1.6; }
+.activity-progress-entry-truncation { margin: 7px 0 0; }
 .activity-context { padding: 11px; }
 .activity-context-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .activity-context-heading { display: grid; gap: 2px; min-width: 0; }
@@ -878,7 +894,7 @@ h1, h2, h3, p { margin-top: 0; }
   .activity-tab { flex: 1 1 0; padding-inline: 6px; }
   .activity-toolbar { gap: 3px; padding-inline: 6px; }
   .activity-level { padding-inline: 7px; }
-  .activity-context { padding-inline: 7px; }
+  .activity-context, .activity-progress { padding-inline: 7px; }
   .activity-context-header { align-items: flex-start; flex-wrap: wrap; }
   .activity-context-metadata-grid { grid-template-columns: minmax(0, 1fr); }
   .activity-context-block-header { align-items: flex-start; }

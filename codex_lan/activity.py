@@ -13,6 +13,9 @@ MAX_OUTPUT = 8192
 MAX_RUN_OUTPUT = 65536
 MAX_STREAMED_OUTPUT = 65536
 MAX_DETAIL = 2400
+MAX_PROGRESS_ENTRIES = 80
+MAX_PROGRESS_MESSAGE = 16384
+MAX_PROGRESS_TEXT = 65536
 OUTPUT_OMITTED = "\n… [additional command output omitted]\n"
 _ANSI = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1b]*(?:\x07|\x1b\\))")
 _SECRET_KEY = r"(?:password|passwd|passphrase|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|client[_-]?secret|authorization|cookie|secret|token|sshpass)"
@@ -291,6 +294,83 @@ class ActivityLog:
         self._seen_events = OrderedDict()
         self._pending_updates = OrderedDict()
         self._streamed_output = {}
+        self.progress_entries = OrderedDict()
+        self.progress_count = 0
+        self.progress_truncated = False
+        self._progress_seen = OrderedDict()
+
+    def progress(self, identifier, text, now=None, started_at=None, truncated=False):
+        """CODEX: Archive public agent updates independently of the terminal-output budget."""
+        if not isinstance(identifier, str) or not identifier or not isinstance(text, str):
+            return None
+        identifier = identifier[:200]
+        now = time.time() if now is None else now
+        safe = redact(text[:MAX_PROGRESS_MESSAGE * 2], MAX_PROGRESS_MESSAGE).strip()
+        if not safe:
+            return None
+        old = self.progress_entries.get(identifier)
+        truncated = bool(truncated) or len(text) > MAX_PROGRESS_MESSAGE or len(safe) > MAX_PROGRESS_MESSAGE
+        safe = safe[:MAX_PROGRESS_MESSAGE]
+        if old and old["text"] == safe and bool(old.get("truncated")) == truncated:
+            return None
+        value = {"id": identifier, "text": safe,
+                 "started_at": old["started_at"] if old else started_at or now,
+                 "updated_at": now}
+        if truncated:
+            value["truncated"] = True
+            self.progress_truncated = True
+        if identifier not in self._progress_seen:
+            self.progress_count += 1
+        self._progress_seen[identifier] = True
+        self._progress_seen.move_to_end(identifier)
+        while len(self._progress_seen) > MAX_PROGRESS_ENTRIES * 2:
+            self._progress_seen.popitem(last=False)
+        self.progress_entries[identifier] = value
+        removed = []
+        total = sum(len(entry["text"]) for entry in self.progress_entries.values())
+        while len(self.progress_entries) > MAX_PROGRESS_ENTRIES or total > MAX_PROGRESS_TEXT:
+            key, discarded = self.progress_entries.popitem(last=False)
+            total -= len(discarded["text"])
+            removed.append(key)
+            self.progress_truncated = True
+        return {"progress_entry": dict(value), "progress_removed_ids": removed,
+                "progress_log_count": self.progress_count,
+                "progress_log_truncated": self.progress_truncated}
+
+    def remove_progress(self, identifier):
+        """CODEX: A late explicit final phase must not leave a duplicate final answer in logs."""
+        identifier = identifier[:200] if isinstance(identifier, str) else ""
+        if self.progress_entries.pop(identifier, None) is None:
+            return None
+        self._progress_seen.pop(identifier, None)
+        self.progress_count = max(0, self.progress_count - 1)
+        return {"progress_removed_ids": [identifier],
+                "progress_log_count": self.progress_count,
+                "progress_log_truncated": self.progress_truncated}
+
+    def restore_progress(self, entries, count=None, truncated=False):
+        """CODEX: Validate and re-bound durable public messages before exposing a recovered run."""
+        if not isinstance(entries, list):
+            return
+        for entry in entries[-MAX_PROGRESS_ENTRIES:]:
+            if not isinstance(entry, dict):
+                continue
+            self.progress(entry.get("id"), entry.get("text"),
+                          now=_number(entry.get("updated_at")) or time.time(),
+                          started_at=_number(entry.get("started_at")))
+            if entry.get("truncated"):
+                restored = self.progress_entries.get(str(entry.get("id", ""))[:200])
+                if restored is not None:
+                    restored["truncated"] = True
+                    self.progress_truncated = True
+        if isinstance(count, int) and not isinstance(count, bool):
+            self.progress_count = max(self.progress_count, count)
+        self.progress_truncated |= bool(truncated) or len(entries) > MAX_PROGRESS_ENTRIES
+
+    def progress_snapshot(self):
+        return {"progress_log": [dict(entry) for entry in self.progress_entries.values()],
+                "progress_log_count": self.progress_count,
+                "progress_log_truncated": self.progress_truncated}
 
     def _bounded_output(self, identifier, raw):
         safe = redact(raw, 262144)
@@ -447,4 +527,5 @@ class ActivityLog:
         else:
             summary = "Waiting for model" if entries else "Starting on your computer"
         return {"activities": entries, "activity": summary,
-                "activity_count": self.count, "activity_truncated": self.truncated}
+                "activity_count": self.count, "activity_truncated": self.truncated,
+                **self.progress_snapshot()}
