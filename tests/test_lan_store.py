@@ -713,6 +713,67 @@ class LanStoreTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             self.store.list_messages(self.a_id, room_a["id"], before=foreign["id"])
 
+    def test_message_pages_keep_metadata_and_attachment_order_with_bounded_reads(self):
+        self.approve()
+        room = self.room()
+        attachments = [self.store.add_attachment(
+            self.a_id, name, "application/octet-stream", 1, "/server/" + name,
+        )["id"] for name in ("second.txt", "first.txt")]
+        expected = []
+        for index in range(25):
+            created = self.make_run(
+                room, request_id=f"page-{index}", text=f"question-{index}",
+                attachments=attachments if index % 5 == 0 else [],
+            )
+            run_id = created["run"]["id"]
+            if index % 2 == 0:
+                self.store.configure_run_usage(run_id, "gpt-5.6-sol", "high", "standard")
+                self.store.record_usage(run_id, 100 + index, 20, 50)
+            status = "failed" if index % 3 == 0 else "completed"
+            error = "Fixture interruption" if status == "failed" else None
+            answer = self.store.finish_run(run_id, status, f"answer-{index}", error)
+            expected.extend([created["user_message"], answer])
+        with self.store.db:
+            self.store.db.execute("UPDATE messages SET created_at=100 WHERE room_id=?", (room["id"],))
+        for message in expected:
+            message["created_at"] = 100.0
+
+        for limit, before, wanted in (
+            (1, None, expected[-1:]),
+            (50, None, expected),
+            (20, expected[30]["id"], expected[10:30]),
+        ):
+            with self.subTest(limit=limit, before=before):
+                statements = []
+                self.store.db.set_trace_callback(statements.append)
+                try:
+                    messages = self.store.list_messages(self.a_id, room["id"], before=before, limit=limit)
+                finally:
+                    self.store.db.set_trace_callback(None)
+                self.assertEqual(messages, wanted)
+                reads = [sql for sql in statements if sql.lstrip().upper().startswith("SELECT")]
+                self.assertLessEqual(len(reads), 7)
+        self.assertEqual(expected[0]["attachment_ids"], attachments)
+        self.assertEqual(expected[1]["run_error"], "Fixture interruption")
+        self.assertEqual(expected[1]["token_usage"], 120)
+        self.assertEqual(expected[1]["usage"]["cached_tokens"], 50)
+        self.assertIsNotNone(expected[1]["estimated_usage_credits_micros"])
+        self.assertIsNone(expected[3]["token_usage"])
+        self.assertEqual(self.store.list_messages(self.admin_id, room["id"]), expected)
+        with self.assertRaises(PermissionError):
+            self.store.list_messages(self.b_id, room["id"])
+
+    def test_message_pagination_uses_index_order_without_sorting_room_history(self):
+        for suffix, values in (("", ("fixture-room", 50)), (" AND rowid < ?", ("fixture-room", 500, 50))):
+            with self.subTest(suffix=suffix):
+                plan = self.store.db.execute(
+                    "EXPLAIN QUERY PLAN SELECT * FROM messages WHERE room_id=?" + suffix
+                    + " ORDER BY rowid DESC LIMIT ?", values,
+                ).fetchall()
+                details = " ".join(row["detail"] for row in plan).upper()
+                self.assertIn("SEARCH MESSAGES USING INDEX", details)
+                self.assertNotIn("TEMP B-TREE", details)
+
     def test_validation_and_immutable_ownership(self):
         self.approve()
         room = self.room()

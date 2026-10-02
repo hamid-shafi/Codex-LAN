@@ -415,13 +415,23 @@ class CodexAppServer:
         identifier = self.next_id
         future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self.pending[identifier] = future
-        try:
+
+        async def exchange():
             await self._write({"id": identifier, "method": method, "params": params or {}})
-            packet = await asyncio.wait_for(future, timeout)
+            return await future
+
+        try:
+            # CODEX: Include pipe backpressure and write-lock contention in the RPC deadline.
+            packet = await asyncio.wait_for(exchange(), timeout)
         except asyncio.TimeoutError:
             raise WorkerError(f"Codex {method} request timed out.") from None
         finally:
             self.pending.pop(identifier, None)
+            if not future.done():
+                future.cancel()
+            elif not future.cancelled():
+                # CODEX: The reader may fail a request before its blocked write returns.
+                future.exception()
         error = packet.get("error")
         if isinstance(error, dict):
             raise AppServerRpcError(str(error.get("message") or "Codex request failed.")[:2000])

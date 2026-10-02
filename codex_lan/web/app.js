@@ -573,19 +573,27 @@ async function api(path, options = {}) {
   const timeout = setTimeout(() => controller.abort(), options.timeout || 20000);
   const headers = new Headers(options.headers || {});
   if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
-  let response;
+  let response, data = {};
   try {
     response = await fetch(path, { ...options, headers, credentials: "same-origin", cache: "no-store", signal: controller.signal });
+    // CODEX: Keep the deadline active until the full response is read; a partial acknowledgement is not a successful send.
+    if (response.status !== 204) {
+      try { data = await response.json(); }
+      catch (error) {
+        if (controller.signal.aborted || error instanceof TypeError) throw error;
+        if (response.ok) throw new Error("The server returned an incomplete or invalid response. Please retry.");
+      }
+    }
   } catch (error) {
     // CODEX: A suspended tab can deliver an old timeout after a newer request already proved the server reachable.
-    scheduleServerUnreachable(requestId);
-    throw new Error(error.name === "AbortError" ? "The server did not respond. Your saved conversation is still available when it reconnects." : "Cannot reach the server. Reconnecting…");
+    if (!response || controller.signal.aborted || error instanceof TypeError) {
+      scheduleServerUnreachable(requestId);
+      throw new Error(controller.signal.aborted || error.name === "AbortError" ? "The server did not respond. Your saved conversation is still available when it reconnects." : "Cannot reach the server. Reconnecting…");
+    }
+    markServerReachable(requestId);
+    throw error;
   } finally { clearTimeout(timeout); }
   markServerReachable(requestId);
-  let data = {};
-  if (response.status !== 204) {
-    try { data = await response.json(); } catch { data = {}; }
-  }
   if (!response.ok) {
     const detail = data.error?.message || data.error || data.detail || data.message;
     const error = new Error(typeof detail === "string" ? detail : `Request failed (${response.status}).`);
@@ -1723,6 +1731,8 @@ async function selectRoom(id, { route = true } = {}) {
   if (route) persistVisibleRoute("push");
   const version = ++state.selectionVersion;
   const cache = roomState(key);
+  // CODEX: History navigation can switch rooms without blurring the composer; restore its matching draft immediately.
+  $("message-input").value = cache.draft;
   const loadVersion = cache.loadVersion = numeric(cache.loadVersion) + 1;
   const cached = cache.loaded;
   state.follow = cache.follow !== false;

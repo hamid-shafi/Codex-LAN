@@ -455,6 +455,7 @@ class Store(CompanionStoreMixin):
                 self.db.execute("DROP TABLE messages")
                 self.db.execute("ALTER TABLE messages_steering_upgrade RENAME TO messages")
             self.db.execute("CREATE INDEX IF NOT EXISTS message_room ON messages(room_id,created_at,id)")
+            self.db.execute("CREATE INDEX IF NOT EXISTS message_room_sequence ON messages(room_id)")
             self.db.execute("CREATE UNIQUE INDEX IF NOT EXISTS message_assistant_run ON messages(run_id) WHERE role='assistant'")
 
     @staticmethod
@@ -1015,17 +1016,35 @@ class Store(CompanionStoreMixin):
         row = self.db.execute("SELECT * FROM messages WHERE id = ?", (message_id,)).fetchone()
         if row is None:
             raise ValueError("Message no longer exists")
-        result = self._row(row)
-        if result["role"] == "assistant":
-            run = self.db.execute("SELECT status,error FROM runs WHERE id = ?", (row["run_id"],)).fetchone()
+        return self._message_rows([row])[0]
+
+    def _message_rows(self, rows) -> list[dict[str, Any]]:
+        """CODEX: Load one page's metadata together instead of querying each saved answer."""
+        messages = [self._row(row) for row in rows]
+        run_ids = tuple({message["run_id"] for message in messages if message["role"] == "assistant"})
+        if not run_ids:
+            return messages
+        placeholders = ",".join("?" for _ in run_ids)
+        runs = {row["id"]: row for row in self.db.execute(
+            "SELECT id,status,error FROM runs WHERE id IN (" + placeholders + ")", run_ids,
+        )}
+        ledgers = {row["run_id"]: row for row in self.db.execute(
+            "SELECT * FROM usage_ledger WHERE run_id IN (" + placeholders + ")", run_ids,
+        )}
+        estimates = {row["run_id"]: row["credits_micros"] for row in self.db.execute(
+            "SELECT run_id,credits_micros FROM quota_usage WHERE run_id IN (" + placeholders + ")", run_ids,
+        )}
+        for result in messages:
+            if result["role"] != "assistant":
+                continue
+            run = runs.get(result["run_id"])
             result["run_status"] = run["status"] if run else None
             result["run_error"] = run["error"] if run else None
-            ledger = self.db.execute("SELECT * FROM usage_ledger WHERE run_id = ?", (row["run_id"],)).fetchone()
+            ledger = ledgers.get(result["run_id"])
             result["usage"] = self._row(ledger) if ledger else None
             result["token_usage"] = ledger["total_tokens"] if ledger else None
-            estimate = self.db.execute("SELECT credits_micros FROM quota_usage WHERE run_id=?", (row["run_id"],)).fetchone()
-            result["estimated_usage_credits_micros"] = estimate[0] if estimate else None
-        return result
+            result["estimated_usage_credits_micros"] = estimates.get(result["run_id"])
+        return messages
 
     def list_messages(
         self, device_id: str, room_id: str, before: Optional[str] = None, limit: int = 50,
@@ -1044,9 +1063,9 @@ class Store(CompanionStoreMixin):
                 values.append(anchor["rowid"])
             values.append(limit)
             rows = self.db.execute(
-                "SELECT id FROM messages WHERE room_id = ?" + extra + " ORDER BY rowid DESC LIMIT ?", values
+                "SELECT * FROM messages WHERE room_id = ?" + extra + " ORDER BY rowid DESC LIMIT ?", values
             ).fetchall()
-            return [self._message(row["id"]) for row in reversed(rows)]
+            return self._message_rows(reversed(rows))
 
     def create_run(
         self, device_id: str, room_id: str, text: str, attachment_ids: list[str], request_id: str,

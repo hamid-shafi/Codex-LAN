@@ -525,11 +525,21 @@ class Peer:
         identifier = uuid.uuid4().hex
         future = asyncio.get_running_loop().create_future()
         self.pending[identifier] = future
-        try:
+
+        async def exchange():
             await self.ws.send_json({"type": "rpc", "id": identifier, "method": method, "params": params})
-            return await asyncio.wait_for(future, timeout)
+            return await future
+
+        try:
+            # CODEX: A stalled transport write shares the same deadline as its reply.
+            return await asyncio.wait_for(exchange(), timeout)
         finally:
             self.pending.pop(identifier, None)
+            if not future.done():
+                future.cancel()
+            elif not future.cancelled():
+                # CODEX: Disconnect can fail this future while the send is still blocked.
+                future.exception()
 
     def receive(self, packet):
         future = self.pending.get(str(packet.get("id")))

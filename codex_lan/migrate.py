@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 
-from .server import image_mime
+from .media import image_mime
 from .store import Store
 
 
