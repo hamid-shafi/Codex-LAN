@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
@@ -22,6 +23,7 @@ from .worker import (
     FILE_ATTACHMENTS_CAPABILITY,
     MAX_ARTIFACT_TRANSFERS,
     MAX_GENERATED_ARTIFACT_BYTES,
+    REFRESH_TIMEOUT_SECONDS,
     CodexAppServer,
     WorkerConnection,
     WorkerError,
@@ -111,14 +113,23 @@ class _HostConnection(WorkerConnection):
         return {"path": str(path)}
 
     async def _refresh_auth(self, identifier):
-        try:
+        tokens = {}
+
+        async def exchange():
+            nonlocal tokens
             tokens = provider_tokens(await self.owner.service.runtime.auth.tokens(force=True))
-            try:
-                await self.codex.respond(identifier, tokens)
-            finally:
-                tokens.clear()
+            await self.codex.respond(identifier, tokens)
+
+        try:
+            # CODEX: Host sessions need the same bounded refresh exchange as remote connectors.
+            await asyncio.wait_for(exchange(), timeout=REFRESH_TIMEOUT_SECONDS)
         except (WorkerError, OSError, RuntimeError, asyncio.TimeoutError):
-            await self.codex.respond_error(identifier, "Server-managed authentication could not be refreshed.")
+            with contextlib.suppress(WorkerError, OSError, RuntimeError, asyncio.TimeoutError):
+                await asyncio.wait_for(self.codex.respond_error(
+                    identifier, "Server-managed authentication could not be refreshed."
+                ), timeout=REFRESH_TIMEOUT_SECONDS)
+        finally:
+            tokens.clear()
 
 
 class _RemoteAppServer(CodexAppServer):

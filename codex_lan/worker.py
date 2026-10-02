@@ -1051,17 +1051,29 @@ class WorkerConnection:
         identifier = uuid.uuid4().hex
         future: asyncio.Future[dict[str, str]] = asyncio.get_running_loop().create_future()
         self.refresh_waiters[identifier] = future
-        try:
+        tokens = {}
+
+        async def exchange():
+            nonlocal tokens
             await self.channel.send({"type": "auth_refresh", "id": identifier})
-            tokens = await asyncio.wait_for(future, timeout=REFRESH_TIMEOUT_SECONDS)
+            tokens = await future
             await self.codex.respond(app_identifier, tokens)
-            tokens.clear()
+
+        try:
+            # CODEX: Bound the entire refresh exchange, including blocked network and native pipe writes.
+            await asyncio.wait_for(exchange(), timeout=REFRESH_TIMEOUT_SECONDS)
         except (asyncio.TimeoutError, WorkerError, ConnectionError, aiohttp.ClientError):
-            await self.codex.respond_error(
-                app_identifier, "Server-managed authentication refresh failed."
-            )
+            with contextlib.suppress(asyncio.TimeoutError, WorkerError, ConnectionError, aiohttp.ClientError):
+                await asyncio.wait_for(self.codex.respond_error(
+                    app_identifier, "Server-managed authentication refresh failed."
+                ), timeout=REFRESH_TIMEOUT_SECONDS)
         finally:
+            tokens.clear()
             self.refresh_waiters.pop(identifier, None)
+            if not future.done():
+                future.cancel()
+            elif not future.cancelled():
+                future.exception()
 
     async def _download_attachment(self, params: dict[str, Any]) -> dict[str, str]:
         attachment_id = params.get("attachment_id")

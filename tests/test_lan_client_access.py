@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import json
@@ -198,6 +199,40 @@ class LanClientAccessTests(unittest.IsolatedAsyncioTestCase):
         await self.claim(pairing, expected=403)
         response = await self.client.post("/api/client/bootstrap/installer", json=pairing)
         self.assertEqual(response.status, 403, await response.text())
+
+    async def test_bootstrap_reads_a_fragmented_pairing_body_before_validating(self):
+        _, installer = self.publish_release()
+        pairing = await self.pairing()
+        payload = json.dumps(pairing).encode()
+
+        async def fragments():
+            yield payload[:1]
+            await asyncio.sleep(0.02)
+            yield payload[1:48]
+            await asyncio.sleep(0.02)
+            yield payload[48:]
+
+        response = await self.client.post(
+            "/api/client/bootstrap/installer", data=fragments(),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 200, await response.text())
+        self.assertEqual(await response.read(), installer)
+        self.assertEqual((await self.claim(pairing))["device"]["id"], self.a["device"]["id"])
+
+    async def test_bootstrap_bounds_a_chunked_body_without_content_length(self):
+        self.publish_release()
+
+        async def too_large():
+            for _ in range(9):
+                yield b" " * 8192
+                await asyncio.sleep(0.005)
+
+        response = await self.client.post(
+            "/api/client/bootstrap/installer", data=too_large(),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(response.status, 413, await response.text())
 
     async def test_private_bootstrap_expires_and_requires_current_approval(self):
         self.publish_release()

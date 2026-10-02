@@ -18,7 +18,7 @@ from aiohttp import WSMsgType
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from codex_lan.host_worker import HostWorkerSession, _RemoteAppServer, remote_directory
+from codex_lan.host_worker import HostWorkerSession, _HostConnection, _RemoteAppServer, remote_directory
 from codex_lan.worker import CodexAppServer, WorkerError
 
 
@@ -620,6 +620,49 @@ class HostWorkerTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.session.close(), 2)
         self.runtime.disconnect.assert_awaited_once_with(self.session.peer)
         self.session.connection.gateway.close.assert_awaited_once()
+
+
+class HostAuthRefreshTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.source_tokens = {"accessToken": "REPLACE_ME", "chatgptAccountId": "example-account"}
+        self.auth = SimpleNamespace(tokens=AsyncMock(return_value=self.source_tokens))
+        self.connection = _HostConnection.__new__(_HostConnection)
+        self.connection.owner = SimpleNamespace(service=SimpleNamespace(runtime=SimpleNamespace(auth=self.auth)))
+        self.connection.codex = SimpleNamespace(respond=AsyncMock(), respond_error=AsyncMock())
+
+    async def blocked(self, *_args, **_kwargs):
+        await asyncio.Event().wait()
+
+    async def test_refresh_bounds_provider_wait(self):
+        self.auth.tokens.side_effect = self.blocked
+        with patch("codex_lan.host_worker.REFRESH_TIMEOUT_SECONDS", 0.02):
+            await asyncio.wait_for(self.connection._refresh_auth(801), 0.5)
+        self.connection.codex.respond_error.assert_awaited_once()
+
+    async def test_refresh_bounds_native_response_and_error_response(self):
+        self.connection.codex.respond.side_effect = self.blocked
+        self.connection.codex.respond_error.side_effect = self.blocked
+        with patch("codex_lan.host_worker.REFRESH_TIMEOUT_SECONDS", 0.02):
+            await asyncio.wait_for(self.connection._refresh_auth(802), 0.5)
+        self.assertEqual(self.connection.codex.respond.call_args.args[1], {})
+        self.assertEqual(self.source_tokens["accessToken"], "REPLACE_ME")
+
+    async def test_refresh_cancellation_clears_only_transient_tokens(self):
+        started = asyncio.Event()
+
+        async def blocked_response(*_args):
+            started.set()
+            await asyncio.Event().wait()
+
+        self.connection.codex.respond.side_effect = blocked_response
+        task = asyncio.create_task(self.connection._refresh_auth(803))
+        await asyncio.wait_for(started.wait(), 0.5)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.assertEqual(self.connection.codex.respond.call_args.args[1], {})
+        self.assertEqual(self.source_tokens["accessToken"], "REPLACE_ME")
+        self.connection.codex.respond_error.assert_not_called()
 
 
 if __name__ == "__main__":

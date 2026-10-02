@@ -163,7 +163,7 @@ class ExecutorConnectionTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(seen["origin"], server.base)
                 self.assertEqual(seen["hello"]["type"], "executor_hello")
                 self.assertEqual(seen["hello"]["protocol"], 1)
-                self.assertEqual(seen["hello"]["capabilities"], ["artifact-store-v1"])
+                self.assertEqual(seen["hello"]["capabilities"], ["artifact-store-v1", "file-attachments-v1"])
                 self.assertEqual(seen["hello"]["cwd"], str(root))
                 self.assertEqual(seen["args"][1:], ("exec-server", "--listen", "stdio", "--concurrent-requests", "16"))
                 self.assertEqual(seen["native"].type, aiohttp.WSMsgType.BINARY)

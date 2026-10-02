@@ -13,6 +13,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from aiohttp import web
@@ -510,6 +511,68 @@ for line in sys.stdin:
         with self.assertRaises(PayloadLimitError):
             await channel.send({"type": "event", "params": {"text": "x" * MAX_WS_BYTES}})
         self.assertEqual(len(socket.messages), 1)
+
+
+class WorkerAuthRefreshTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = Path(self.temp.name)
+        config = WorkerConfig(build_endpoints("http://127.0.0.1:8765"), root / "token", root,
+                              Path(sys.executable), root / "state", "test-refresh")
+        self.connection = WorkerConnection(config, None, "test-device")
+        self.connection.codex = SimpleNamespace(respond=mock.AsyncMock(), respond_error=mock.AsyncMock())
+        self.waiter = None
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    async def blocked_send(self, packet):
+        self.waiter = self.connection.refresh_waiters[packet["id"]]
+        await asyncio.Event().wait()
+
+    async def deliver_tokens(self, packet):
+        self.waiter = self.connection.refresh_waiters[packet["id"]]
+        self.waiter.set_result(self.tokens)
+
+    async def test_deadline_covers_blocked_refresh_send_and_cleans_waiter(self):
+        self.connection.channel = SimpleNamespace(send=self.blocked_send)
+        with mock.patch("codex_lan.worker.REFRESH_TIMEOUT_SECONDS", 0.02):
+            await asyncio.wait_for(self.connection._refresh_auth(701), 0.5)
+        self.assertEqual(self.connection.refresh_waiters, {})
+        self.assertTrue(self.waiter.cancelled())
+        self.connection.codex.respond.assert_not_called()
+        self.connection.codex.respond_error.assert_awaited_once()
+
+    async def test_deadline_covers_blocked_auth_error_response(self):
+        self.connection.channel = SimpleNamespace(send=self.blocked_send)
+
+        async def blocked_error(*args):
+            await asyncio.Event().wait()
+
+        self.connection.codex.respond_error.side_effect = blocked_error
+        with mock.patch("codex_lan.worker.REFRESH_TIMEOUT_SECONDS", 0.02):
+            await asyncio.wait_for(self.connection._refresh_auth(702), 0.5)
+        self.assertEqual(self.connection.refresh_waiters, {})
+        self.assertTrue(self.waiter.cancelled())
+
+    async def test_cancellation_clears_tokens_even_while_native_response_is_blocked(self):
+        self.tokens = {"accessToken": "REPLACE_ME", "chatgptAccountId": "synthetic-account"}
+        self.connection.channel = SimpleNamespace(send=self.deliver_tokens)
+        began = asyncio.Event()
+
+        async def blocked_response(*args):
+            began.set()
+            await asyncio.Event().wait()
+
+        self.connection.codex.respond.side_effect = blocked_response
+        task = asyncio.create_task(self.connection._refresh_auth(703))
+        await asyncio.wait_for(began.wait(), 0.5)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.assertEqual(self.tokens, {})
+        self.assertEqual(self.connection.refresh_waiters, {})
+        self.connection.codex.respond_error.assert_not_called()
 
 
 @unittest.skipUnless(shutil.which("codex") or (Path.home() / ".local/bin/codex").exists(),

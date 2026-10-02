@@ -258,8 +258,15 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         await page.keyboard.press("Control+Alt+ArrowDown")
         await page.wait_for_function("() => selectedRoom().model === 'sol'")
         await expect(page.locator("#model-select")).to_have_value("sol")
-        await page.keyboard.press("Control+Alt+ArrowDown")
-        await page.wait_for_function("() => selectedRoom().model === 'astra'")
+        remaining_models = await page.locator("#model-select").evaluate("""select => {
+            const values = [...select.options].filter(option => !option.disabled && option.value).map(option => option.value);
+            return values.slice(values.indexOf('sol') + 1).concat(values.slice(0, values.indexOf('sol')));
+        }""")
+        for model in remaining_models:
+            await page.keyboard.press("Control+Alt+ArrowDown")
+            await page.wait_for_function("model => selectedRoom().model === model", arg=model)
+            if model == "astra":
+                break
         await expect(page.locator("#model-select")).to_have_value("astra")
         await self.worker.delta(" Background output stays in its own room.")
         await expect(page.locator(".message.assistant")).to_have_count(0)
@@ -439,7 +446,8 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(assistant.locator(".failure-title")).to_have_text("Response failed")
         await expect(page.locator(".run-error:visible")).to_have_count(1)
         await expect(assistant.locator(".run-error")).to_have_text("Codex app-server disconnected.")
-        await expect(assistant.locator(".message-footer")).to_be_hidden()
+        await expect(assistant.locator(".message-footer")).to_be_visible()
+        await expect(assistant.locator(".message-usage-label")).to_have_text("Usage · awaiting report")
         await expect(assistant.locator(".message-metrics")).to_be_empty()
         await expect(assistant.locator(".message-content")).to_be_hidden()
         await expect(assistant.get_by_role("button", name="Edit & retry")).to_be_visible()
@@ -546,13 +554,17 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(delete_button).to_be_visible()
         default_delete_background = await delete_button.evaluate("node => getComputedStyle(node).backgroundColor")
         await delete_button.hover()
-        await expect(delete_button).to_have_css("color", "rgb(255, 255, 255)")
+        danger_color = await delete_button.evaluate("""node => {
+            const probe = document.createElement('span'); probe.style.color = 'var(--danger)';
+            node.append(probe); const color = getComputedStyle(probe).color; probe.remove(); return color;
+        }""")
+        await expect(delete_button).to_have_css("color", danger_color)
         hovered_delete_appearance = await delete_button.evaluate("""node => ({
             color: getComputedStyle(node).color,
             background: getComputedStyle(node).backgroundColor,
         })""")
         self.assertNotEqual(hovered_delete_appearance["background"], default_delete_background, hovered_delete_appearance)
-        self.assertEqual(hovered_delete_appearance["color"], "rgb(255, 255, 255)", hovered_delete_appearance)
+        self.assertEqual(hovered_delete_appearance["color"], danger_color, hovered_delete_appearance)
         await expect(foreign_row.locator(".room-settings, .room-delete")).to_have_count(0)
         await expect(foreign_row.locator(".room-pin")).to_have_count(1)
         await own_row.get_by_role("button", name="Settings for Disposable test room", exact=True).click()

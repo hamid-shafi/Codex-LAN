@@ -404,6 +404,10 @@ class CompanionBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(cosmic, await popup.evaluate("node => getComputedStyle(node).backgroundColor"))
         for width in (1440, 768, 390):
             await self.page.set_viewport_size({"width": width, "height": 800})
+            await self.page.wait_for_function("""() => {
+                const bounds = document.querySelector('.companion-details-window').getBoundingClientRect();
+                return bounds.left >= 0 && bounds.right <= innerWidth && bounds.bottom <= innerHeight;
+            }""")
             bounds = await popup.bounding_box()
             self.assertGreaterEqual(bounds["x"], 0)
             self.assertLessEqual(bounds["x"] + bounds["width"], width)
@@ -450,6 +454,7 @@ class CompanionBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def test_selection_across_messages_copies_literal_text_without_clipboard(self):
         await self.login(self.admin)
         await expect(self.page.locator("#timeline .message.assistant .message-content")).to_be_visible()
+        await self.page.locator("#timeline").evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
         await self.page.evaluate("""() => {
             window.clipboardWrites = 0;
             Object.defineProperty(navigator.clipboard, 'writeText', {value: () => { window.clipboardWrites++; throw Error('clipboard forbidden'); }});
@@ -457,6 +462,7 @@ class CompanionBrowserTests(unittest.IsolatedAsyncioTestCase):
             const range = document.createRange(); range.setStart(contents[0], 0);
             range.setEnd(contents[contents.length - 1], contents[contents.length - 1].childNodes.length);
             getSelection().removeAllRanges(); getSelection().addRange(range);
+            document.dispatchEvent(new Event('selectionchange'));
         }""")
         await expect(self.page.locator("#selection-actions")).to_be_visible()
         selected = await self.page.evaluate("getSelection().toString().trim()")

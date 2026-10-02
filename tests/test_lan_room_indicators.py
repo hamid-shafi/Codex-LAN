@@ -67,7 +67,7 @@ class LanRoomIndicatorTests(unittest.IsolatedAsyncioTestCase):
         await self.page.evaluate("async () => { await refreshRooms(); }")
         background_row = self.page.locator(f'.room-row[data-room-id="{background["id"]}"]')
         await expect(background_row.locator('.running-dot:not([hidden])')).to_have_count(1)
-        await expect(self.page.locator('.unread-dot')).to_have_count(0)
+        await expect(background_row.locator('.unread-dot')).to_be_visible()
         await expect(background_row).to_have_class(re.compile(r"\bunread\b"))
         row = self.page.locator(f'.room-row[data-room-id="{self.room["id"]}"]')
         pin = row.locator(".room-pin")

@@ -143,22 +143,25 @@ class SidebarPreferenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.order(), active_order)
         self.assertFalse(self.errors, self.errors)
 
-    async def test_background_reply_has_no_circle_and_read_state_survives_reload(self):
+    async def test_background_reply_marker_and_read_state_survive_reload(self):
         other = self.extra_room()
         await self.ready()
-        await expect(self.page.locator(".unread-dot")).to_have_count(0)
+        await expect(self.page.locator(".unread-dot:visible")).to_have_count(0)
         self.complete(other)
         await self.page.evaluate("async () => await refreshRooms()")
         await expect(self.row(other)).to_have_class(re.compile(r"\bunread\b"))
         await expect(self.row(other).locator(".running-dot")).to_be_hidden()
+        await expect(self.row(other).locator(".unread-dot")).to_be_visible()
         await self.page.reload()
         await expect(self.row(other)).to_have_class(re.compile(r"\bunread\b"))
-        await expect(self.page.locator(".unread-dot")).to_have_count(0)
+        await expect(self.row(other).locator(".unread-dot")).to_be_visible()
         await self.row(other).locator(".room-item").click()
         await expect(self.page.locator("#timeline")).to_contain_text("New answer")
         await expect(self.row(other)).not_to_have_class(re.compile(r"\bunread\b"))
+        await expect(self.row(other).locator(".unread-dot")).to_be_hidden()
         await self.page.reload()
         await expect(self.row(other)).not_to_have_class(re.compile(r"\bunread\b"))
+        await expect(self.row(other).locator(".unread-dot")).to_be_hidden()
         self.assertFalse(self.errors, self.errors)
 
     async def test_new_room_appears_below_fixed_pins_then_yields_to_newer_message_activity(self):
@@ -189,7 +192,8 @@ class SidebarPreferenceTests(unittest.IsolatedAsyncioTestCase):
         moved = [*pinned_order, older_unpinned["id"], new_id, self.foreign["id"]]
         self.assertEqual(await self.order(), moved)
         await expect(self.row(older_unpinned)).to_have_class(re.compile(r"\bunread\b"))
-        await expect(self.page.locator(".unread-dot")).to_have_count(0)
+        await expect(self.row(older_unpinned).locator(".unread-dot")).to_be_visible()
+        await expect(self.row(self.foreign).locator(".unread-dot")).to_be_hidden()
         await self.page.reload()
         await expect(self.page.locator("#room-title")).to_have_text("Newest room")
         self.assertEqual(await self.order(), moved)
@@ -212,7 +216,7 @@ class SidebarPreferenceTests(unittest.IsolatedAsyncioTestCase):
         await self.page.evaluate("async () => await refreshRooms()")
         self.assertLess((await self.order()).index(other["id"]), (await self.order()).index(newest["id"]))
         await expect(self.row(other)).not_to_have_class(re.compile(r"\bunread\b"))
-        await expect(self.page.locator(".unread-dot")).to_have_count(0)
+        await expect(self.page.locator(".unread-dot:visible")).to_have_count(0)
         self.assertFalse(self.errors, self.errors)
 
     async def test_reading_older_text_or_hidden_tab_does_not_clear_new_reply(self):

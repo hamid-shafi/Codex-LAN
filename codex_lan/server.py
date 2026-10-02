@@ -606,9 +606,10 @@ class Service:
         )
         speed = self.runtime.validate_speed(model, data.get("speed", room.get("speed", "standard")))
         if (model, effort, speed) != (room["model"], room["effort"], room.get("speed", "standard")):
-            room = self.store.update_room(device_id, room_id, model=model, effort=effort, speed=speed)
+            room = {**room, **self.store.update_room(device_id, room_id, model=model, effort=effort, speed=speed)}
         result = self.store.create_run(device_id, room_id, text, attachments, request_id, tool_read_only)
-        room = result.get("room", room)
+        # CODEX: Preserve companion metadata while refreshing the room after admission and automatic naming.
+        room = {**room, **result.get("room", {})}
         if not result.get("deduplicated"):
             result["run"] = self.store.configure_run_usage(result["run"]["id"], model, effort, speed)
             context = text

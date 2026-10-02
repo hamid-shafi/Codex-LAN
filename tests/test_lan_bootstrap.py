@@ -102,7 +102,7 @@ class LanBootstrapTests(unittest.TestCase):
         self.assertEqual((target / "device.token").read_text(), "preserve-device-identity")
 
     def test_setup_does_not_overwrite_running_client(self):
-        argv = ["setup_lan_client.py", "--no-launch"]
+        argv = ["setup_lan_client.py", "--server", "owner@192.0.2.56", "--no-launch"]
         with mock.patch.object(sys, "argv", argv), \
              mock.patch.object(sys, "version_info", (3, 10)), \
              mock.patch.object(setup_lan_client.platform, "machine", return_value="x86_64"), \
@@ -118,7 +118,7 @@ class LanBootstrapTests(unittest.TestCase):
         self.assertFalse((self.home / ".local/share/codex-lan-client").exists())
 
     def test_setup_rejects_wrong_architecture_before_writing_files(self):
-        with mock.patch.object(sys, "argv", ["setup_lan_client.py", "--no-launch"]), \
+        with mock.patch.object(sys, "argv", ["setup_lan_client.py", "--server", "owner@192.0.2.56", "--no-launch"]), \
              mock.patch.object(sys, "version_info", (3, 12)), \
              mock.patch.object(setup_lan_client.platform, "machine", return_value="aarch64"), \
              mock.patch.object(Path, "home", return_value=self.home), \

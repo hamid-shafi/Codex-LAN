@@ -264,9 +264,12 @@ bash "$codex_bootstrap_dir/Install-Codex-Connector-{version}.sh" --pair-file "$c
             raise web.HTTPUnsupportedMediaType(text="Expected a JSON pairing file.")
         if request.content_length is not None and request.content_length > 65536:
             raise web.HTTPRequestEntityTooLarge(max_size=65536, actual_size=request.content_length)
-        raw = await request.content.read(65537)
-        if len(raw) > 65536:
-            raise web.HTTPRequestEntityTooLarge(max_size=65536, actual_size=len(raw))
+        # CODEX: A stream read can return before the JSON body is complete, especially over slow LAN links.
+        raw = bytearray()
+        async for chunk in request.content.iter_chunked(8192):
+            raw.extend(chunk)
+            if len(raw) > 65536:
+                raise web.HTTPRequestEntityTooLarge(max_size=65536, actual_size=len(raw))
         try:
             data = json.loads(raw)
         except (UnicodeError, ValueError, TypeError) as exc:
