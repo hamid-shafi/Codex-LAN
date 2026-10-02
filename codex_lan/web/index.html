@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <title>Codex · Shared workspace</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23121c35'/%3E%3Cpath d='M14 16h36v25H31L20 50l2-9h-8z' fill='%23f7f9ff'/%3E%3Ccircle cx='24' cy='29' r='3' fill='%235d7cff'/%3E%3Ccircle cx='32' cy='29' r='3' fill='%235d7cff'/%3E%3Ccircle cx='40' cy='29' r='3' fill='%2331d19c'/%3E%3C/svg%3E">
+  <script src="/theme-init.js"></script>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/controls.css">
+  <link rel="stylesheet" href="/companions.css">
+  <link rel="stylesheet" href="/math.css">
+  <script src="/katex-0.18.7.min.js" defer></script>
+  <script src="/math.js" defer></script>
+  <script src="/host-setup.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/controls.js" defer></script>
+  <script src="/companions.js" defer></script>
+</head>
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <linearGradient id="brand-background" x1="70" y1="40" x2="450" y2="480" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#172a4c"/><stop offset="0.52" stop-color="#0d1c32"/><stop offset="1" stop-color="#09241f"/></linearGradient>
+      <linearGradient id="brand-accent" x1="120" y1="130" x2="395" y2="385" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#75a7ff"/><stop offset="1" stop-color="#31d19c"/></linearGradient>
+      <symbol id="codex-brand" viewBox="0 0 512 512">
+        <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#brand-background)"/>
+        <rect x="38" y="38" width="436" height="436" rx="98" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
+        <path d="M105 143c0-35 28-63 63-63h174c35 0 63 28 63 63v105c0 35-28 63-63 63H230l-73 59c-15 12-37 1-35-18l7-46c-15-11-24-29-24-49V143z" fill="#f6f9ff"/>
+        <path d="M215 281h127c35 0 63-28 63-63v-15c18 11 30 31 30 54v80c0 34-27 61-61 61h-37l-56 43c-14 11-34 1-32-17l4-26h-38c-34 0-61-27-61-61v-1l61-55z" fill="url(#brand-accent)"/>
+        <g fill="#183055"><circle cx="319" cy="194" r="17"/><circle cx="255" cy="194" r="17"/><circle cx="191" cy="194" r="17"/></g>
+        <path d="M310 337h60" fill="none" stroke="#eafff8" stroke-width="13" stroke-linecap="round" opacity="0.88"/>
+      </symbol>
+    </defs>
+  </svg>
+  <section id="gate" class="gate" aria-labelledby="gate-title">
+    <div class="gate-card">
+      <svg class="brand-mark" aria-hidden="true"><use href="#codex-brand"/></svg>
+      <p class="eyebrow">YOUR SHARED WORKSPACE</p>
+      <h1 id="gate-title">Connect to Codex</h1>
+      <p id="gate-description">Sign in with the easy login created for this workspace, or connect this computer another way.</p>
+      <form id="password-login-form" class="gate-primary-login" aria-describedby="password-login-hint">
+        <label for="password-login-name">Login name</label>
+        <input id="password-login-name" type="text" minlength="3" maxlength="64" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Your login name" required>
+        <label for="password-login-password">Password</label>
+        <div class="password-field">
+          <input id="password-login-password" type="password" minlength="8" maxlength="256" autocomplete="current-password" dir="ltr" placeholder="Your password" required>
+          <button id="password-login-show" class="password-reveal" type="button" aria-label="Show password" aria-controls="password-login-password" aria-pressed="false">Show</button>
+        </div>
+        <p id="password-login-hint" class="field-hint">Your password signs this browser in. Connector and recovery keys remain separate.</p>
+        <label class="remember-login"><input id="password-login-remember" type="checkbox" checked> Keep me signed in on this browser</label>
+        <button id="password-login-submit" class="button primary" type="submit">Sign in</button>
+      </form>
+      <div id="gate-alternatives" class="gate-alternatives" aria-label="Other ways to connect">
+        <details id="enroll-details" class="advanced-login" open><summary>Connect a new computer</summary><form id="enroll-form">
+          <label for="enroll-name">Computer name</label>
+          <input id="enroll-name" type="text" maxlength="80" autocomplete="off" placeholder="For example, Office Ubuntu" required>
+          <button id="enroll-submit" class="button primary" type="submit">Request access</button>
+        </form></details>
+        <details id="advanced-login" class="advanced-login"><summary>Use an invitation or recovery key</summary><form id="login-form">
+          <label for="login-token">Recovery or device access key</label>
+          <input id="login-token" type="password" autocomplete="off" spellcheck="false" dir="ltr" required>
+          <p class="field-hint">Use this if easy sign-in is not set up or you need to recover access.</p>
+          <button id="login-submit" class="button primary" type="submit">Connect with key</button>
+        </form></details>
+      </div>
+      <p id="gate-status" class="status-text" role="status" aria-live="polite"></p>
+      <button id="switch-device" class="button subtle" type="button" hidden>Use another invitation</button>
+    </div>
+  </section>
+
+  <div id="workspace" class="workspace" hidden>
+    <button id="sidebar-scrim" class="sidebar-scrim" type="button" aria-label="Close rooms" hidden></button>
+    <aside id="sidebar" class="sidebar" aria-label="Rooms">
+      <div class="sidebar-brand"><svg class="brand-mark" aria-hidden="true"><use href="#codex-brand"/></svg><div><span class="brand-name">Codex</span><span class="brand-caption">Shared workspace</span></div></div>
+      <button id="new-room" class="button new-room" type="button"><span aria-hidden="true">＋</span> New room</button>
+      <div class="search-field"><label class="sr-only" for="room-search">Search rooms or people</label><input id="room-search" type="search" placeholder="Search rooms or people" autocomplete="off"><button id="quick-switcher-open" class="quick-switcher-open" type="button" aria-label="Open quick switcher" aria-keyshortcuts="Control+K Meta+K" title="Quick switcher · Ctrl+K"><kbd>Ctrl K</kbd></button></div>
+      <div class="sidebar-section"><span>Rooms</span><span id="room-count">0</span></div>
+      <div id="room-list" class="room-list" role="navigation" aria-label="Room list"></div>
+      <div class="sidebar-bottom">
+        <button id="my-usage-open" class="button subtle my-usage-link" type="button" aria-haspopup="dialog">My usage <span id="my-usage-brief" class="muted"></span></button>
+        <button id="browser-login-open" class="button subtle browser-login-link" type="button" aria-haspopup="dialog">Easy sign-in <span id="browser-login-brief" class="muted">Set up</span></button>
+        <button id="admin-open" class="button subtle admin-link" type="button" hidden>Administration <span aria-hidden="true">↗</span></button>
+        <div class="device-row"><span class="device-avatar" aria-hidden="true">D</span><div><strong id="device-name">Device</strong><span id="device-role">Client</span></div><button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to dark theme" title="Switch theme">◐</button></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button id="sidebar-toggle" class="icon-button sidebar-toggle" type="button" aria-label="Hide rooms" aria-controls="sidebar" aria-expanded="true" title="Hide rooms"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/><path class="sidebar-toggle-pane" d="M5 7h2v10H5z" stroke="none" fill="currentColor"/></svg></button>
+        <div class="room-heading"><h1 id="room-title">Your workspace</h1><p id="room-subtitle">A place for your next idea.</p></div>
+        <div class="header-controls" role="group" aria-label="Appearance">
+          <label class="header-field theme-field" for="theme-select"><span>Appearance</span><select id="theme-select" aria-label="Appearance"><option value="light">Light</option><option value="dark">Dark</option><option value="midnight">Midnight</option><option value="chatgpt">ChatGPT Black</option><option value="torte">Vim Torte</option><option value="cosmic">Cosmic ✦</option><option value="aurora">Aurora ✦</option><option value="ember">Ember ✦</option><option value="velvet">Velvet ✦</option></select></label>
+        </div>
+        <div class="header-actions"><button id="connector-open" class="button connector-button" type="button" aria-label="Local connector" title="Set up and manage your local connector"><span>Connector</span><span class="connector-symbol" aria-hidden="true">⇄</span></button><span id="connection-status" class="connection-status"><span class="status-dot" aria-hidden="true"></span><span id="connection-text">Connecting</span></span><button id="room-menu" class="icon-button" type="button" aria-label="Room settings" title="Room settings" disabled>•••</button></div>
+      </header>
+      <section id="connector-update-notice" class="connector-update-notice" role="alert" aria-labelledby="connector-update-title" aria-describedby="connector-update-message connector-update-command" hidden>
+        <span class="connector-update-symbol" aria-hidden="true">↻</span>
+        <div class="connector-update-copy"><strong id="connector-update-title">Codex Connector update required</strong><p id="connector-update-message"></p><code id="connector-update-command">bash ~/Downloads/Install-Codex-Connector.sh</code></div>
+        <div class="connector-update-actions"><a id="connector-update-download" class="button primary" href="/api/client/download/installer" download>Download update</a><button id="connector-update-details" class="button" type="button">Update instructions</button><button id="connector-update-dismiss" class="icon-button" type="button" aria-label="Dismiss connector notice" title="Hide this notice; Connector settings stay available">×</button></div>
+      </section>
+      <section id="easy-signin-offer" class="easy-signin-offer" aria-labelledby="easy-signin-offer-title" hidden>
+        <span class="easy-signin-offer-symbol" aria-hidden="true">✓</span>
+        <div><strong id="easy-signin-offer-title">Your computer is approved</strong><p>Create a personal login name and password so signing in from this browser is easy. Device approval and Connector access stay separate.</p></div>
+        <div class="easy-signin-offer-actions"><button id="easy-signin-setup" class="button primary" type="button">Create easy sign-in</button><button id="easy-signin-dismiss" class="button subtle" type="button">Not now</button></div>
+      </section>
+      <div id="connection-banner" class="connection-banner" role="status" hidden><span id="connection-banner-text"></span><span id="connection-setup" class="connection-setup" hidden><button id="banner-connector-setup" class="button" type="button">Set up connector</button></span></div>
+
+      <section id="chat-view" class="chat-view" aria-label="Conversation">
+        <div class="timeline-stage">
+          <div id="timeline-scroll" class="timeline-scroll" tabindex="0" aria-label="Conversation messages">
+            <div id="empty-state" class="empty-state"><span class="empty-symbol" aria-hidden="true">✧</span><h2>What are we working on?</h2><p>Create a room to start a conversation.<br>Your chats stay in the shared workspace.</p><button id="empty-new-room" class="button primary" type="button">Create a room</button></div>
+            <div id="history-toolbar" class="history-toolbar" hidden><button id="load-older" class="button subtle" type="button">Load older messages</button></div>
+            <div id="timeline" class="timeline"></div>
+            <div id="room-loading" class="room-loading" role="status" aria-live="polite" aria-atomic="true" hidden>
+              <div class="room-loading-status"><span class="room-loading-spinner" aria-hidden="true"></span><span>Loading recent messages…</span></div>
+              <div class="room-loading-stack" aria-hidden="true">
+                <div class="room-loading-bubble room-loading-bubble-user"><span></span><span></span></div>
+                <div class="room-loading-bubble room-loading-bubble-assistant"><span></span><span></span><span></span></div>
+                <div class="room-loading-bubble room-loading-bubble-user short"><span></span></div>
+              </div>
+            </div>
+          </div>
+          <button id="jump-bottom" class="jump-bottom button" type="button" hidden>↓ Latest messages</button>
+        </div>
+        <div id="inspector-notice" class="inspector-notice" hidden>This room belongs to another device. You can inspect its history.</div>
+        <section id="read-only-notice" class="read-only-notice" aria-labelledby="read-only-title" hidden>
+          <div><strong id="read-only-title">Earlier room · Read-only</strong><p id="read-only-reason">This room’s history is preserved. Start a new room to use server-managed responses.</p></div>
+          <div class="read-only-actions"><button id="read-only-copy-draft" class="button subtle" type="button" hidden>Copy saved draft</button><button id="read-only-new-room" class="button primary" type="button">New room</button></div>
+        </section>
+        <section id="composer-area" class="composer-area" hidden aria-label="Message composer">
+          <div id="reply-preview" class="reply-preview" hidden><div><span>Replying to a selection</span><p id="reply-text"></p></div><button id="reply-clear" class="icon-button" type="button" aria-label="Cancel reply">×</button></div>
+          <div class="composer" id="composer"><span id="composer-send-feedback" class="composer-send-feedback" aria-hidden="true"><span class="send-neural-halo"></span><span class="send-neural-scan"></span><i></i><i></i><i></i><i></i><i></i></span>
+            <div id="attachment-list" class="attachment-list"></div>
+            <label for="message-input" class="sr-only">Message</label>
+            <textarea id="message-input" placeholder="Message Codex…" rows="2" maxlength="200000" aria-describedby="composer-hint"></textarea>
+            <div class="composer-toolbar"><div class="composer-tools"><button id="attach-button" class="button attachment-tool" type="button" aria-label="Attach files" title="Attach files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 12 6-6a3 3 0 0 1 4.2 4.2l-8 8a5 5 0 0 1-7-7l8-8"/><path d="m6 14 8-8"/></svg><span>Files</span></button><input id="attachment-input" type="file" multiple hidden><label class="composer-field model-field" for="model-select"><span>Model</span><select id="model-select" aria-label="Model"></select></label><label class="composer-field speed-field" for="speed-select"><span>Speed</span><select id="speed-select" aria-label="Response speed" disabled><option value="standard">Standard</option><option value="fast">Fast ⚡</option></select></label><label class="composer-field effort-field" for="effort-select"><span>Thinking</span><select id="effort-select" aria-label="Reasoning effort"></select></label><label class="composer-read-only" for="tool-read-only" title="Inspect only. Codex cannot modify files or the computer for this response."><input id="tool-read-only" type="checkbox" aria-label="Read only — no changes" aria-describedby="tool-read-only-detail"><span class="read-only-switch" aria-hidden="true"></span><span class="read-only-copy"><strong>Read only</strong><small id="tool-read-only-detail">No changes</small></span></label></div><div class="send-tools"><button id="stop-button" class="button stop-button" type="button" hidden>■ Stop</button><button id="send-button" class="send-button" type="button" aria-label="Send message" title="Send message"><span class="send-symbol" aria-hidden="true"><svg class="send-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m20 4-5.4 16-3.4-7.2L4 9.4 20 4Z" fill="currentColor" fill-opacity=".12"/><path d="m11.2 12.8 5-5"/></svg><svg class="send-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><circle cx="19" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="5" cy="19" r="1" fill="currentColor" stroke="none"/></svg><span class="send-orbit"></span></span></button></div></div>
+          </div>
+          <div class="composer-footer"><span id="composer-hint">Enter twice to send · Shift+Enter for a new line</span><span id="draft-meter" class="draft-meter" title="Approximate draft size; attachments and conversation context are not included" hidden></span><label class="composer-enter-mode"><input id="double-enter-send" type="checkbox" checked> Double Enter to send</label><span id="workspace-path"></span><span id="speed-notice" class="speed-notice" hidden></span></div>
+        </section>
+      </section>
+
+      <section id="admin-view" class="admin-view" hidden aria-labelledby="admin-title">
+        <div class="admin-heading"><div><p class="eyebrow">SERVER CONTROLS</p><h2 id="admin-title">Devices & usage</h2><p id="admin-description">Approve devices, manage their limits, and see their activity.</p></div><button id="admin-refresh" class="button" type="button">Refresh</button></div>
+        <nav class="admin-pages" aria-label="Administration pages"><button id="admin-devices-open" class="button" type="button" aria-current="page">Devices & usage</button><button id="host-setup-open" class="button" type="button">Host setup</button></nav>
+        <div id="admin-content">
+        <section id="provider-usage" class="quota-section" aria-labelledby="provider-usage-title"><h3 id="provider-usage-title">Official shared-account quota</h3><p class="usage-explanation">Reported by OpenAI for the whole shared account. Per-device token counts below do not measure each person’s percentage of this quota.</p><p id="provider-usage-status" class="usage-explanation" role="status"></p><div id="provider-windows" class="provider-windows"></div></section>
+        <div id="usage-summary" class="usage-summary"></div>
+        <section id="estimated-quota" class="quota-section" aria-labelledby="estimated-quota-title"><h3 id="estimated-quota-title">Estimated per-device weekly shares</h3><p class="usage-explanation">Allocate a percentage of the account’s regular Codex weekly allowance, such as 3%. Each device’s meter measures its own share, not the whole account. Usage is estimated from model, token, cache and Fast weights; these units are not OpenAI credits or charges. Codex-Spark has a separate provider allowance and is not mixed into this meter.</p><p id="quota-calibration" class="usage-explanation" role="status"></p><div id="allocated-quota" class="device-quota" aria-live="polite" hidden></div><p id="quota-week-reset" class="quota-reset"></p></section>
+        <div class="admin-section-title"><h3>Connected devices</h3><span id="admin-updated" class="muted"></span></div>
+        <div id="admin-devices" class="admin-devices"></div>
+        <p id="admin-status" class="status-text" role="status"></p>
+        </div>
+        <section id="host-setup" class="host-setup" hidden aria-label="Host setup">
+          <div class="host-setup-intro"><div><strong id="host-setup-name">Your Linux host</strong><p>Check the host, choose the address to share, and manage the services that keep your workspace available.</p></div><span id="host-setup-updated" class="muted"></span></div>
+          <p id="host-setup-status" class="status-text" role="status" aria-live="polite">Checking your host…</p>
+          <div id="host-setup-notices" class="host-setup-notices"></div>
+          <div id="host-setup-cards" class="host-setup-cards"></div>
+          <section class="host-setup-actions-section" aria-labelledby="host-setup-actions-title"><h3 id="host-setup-actions-title">Host controls</h3><p class="usage-explanation">These controls apply to the server computer without restarting the chat server.</p><div id="host-setup-actions" class="host-setup-actions"></div></section>
+          <form id="host-setup-https-form" class="host-setup-https" hidden aria-labelledby="host-setup-https-title"><h3 id="host-setup-https-title">Connect over your local network</h3><p id="host-setup-https-help" class="usage-explanation">Choose this computer’s local-network address. Other computers use the HTTPS address after setup. Trust the downloaded host certificate on each client.</p><div class="host-setup-https-fields"><label for="host-setup-address">Host address<select id="host-setup-address" required></select></label><label for="host-setup-port">HTTPS port<input id="host-setup-port" type="number" min="1024" max="65535" value="8767" required></label><button id="host-setup-https-submit" class="button primary" type="submit">Set up HTTPS</button></div></form>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="admin-device-dialog" class="room-dialog admin-device-dialog" aria-labelledby="admin-device-title">
+    <div class="dialog-heading"><div><p class="eyebrow">DEVICE PROFILE</p><h2 id="admin-device-title">Device details</h2></div><button id="admin-device-close" class="icon-button" type="button" aria-label="Close device details">×</button></div>
+    <p id="admin-device-subtitle" class="field-hint"></p>
+    <div id="admin-device-detail" class="admin-device-detail"></div>
+  </dialog>
+  <dialog id="room-dialog" class="room-dialog" aria-labelledby="dialog-title">
+    <form id="room-form">
+      <div class="dialog-heading"><h2 id="dialog-title">Room settings</h2><button id="dialog-close" class="icon-button" type="button" aria-label="Close">×</button></div>
+      <label for="room-name-input">Room name</label><input id="room-name-input" placeholder="New chat" maxlength="160" autocomplete="off">
+      <label for="room-cwd-input">Working directory</label><input id="room-cwd-input" placeholder="Use your computer’s default workspace" autocomplete="off" spellcheck="false" aria-describedby="room-cwd-hint"><p id="room-cwd-hint" class="field-hint">An absolute folder on this computer. The next response uses it; this room’s history stays together.</p>
+      <p id="dialog-quote" class="dialog-quote" hidden></p>
+      <p id="dialog-error" class="status-text" role="status"></p>
+      <div class="dialog-actions"><button id="room-delete" class="button danger" type="button" hidden>Delete room</button><span class="flex-spacer"></span><button id="dialog-cancel" class="button" type="button">Cancel</button><button id="room-save" class="button primary" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+  <dialog id="connector-dialog" class="room-dialog connector-dialog" aria-labelledby="connector-title">
+    <div class="dialog-heading"><h2 id="connector-title">Local connector</h2><button id="connector-close" class="icon-button" type="button" aria-label="Close connector setup">×</button></div>
+    <p class="connector-intro">The browser shows your chats. The connector runs tools and edits files on this computer.</p>
+    <p id="connector-execution" class="field-hint" hidden></p>
+    <p id="connector-version" class="connector-version" role="status">Checking connector version…</p>
+    <p id="connector-already-ready" class="connector-ready-note" hidden>Your worker is already connected and ready to use. You do not need to install a second connector. To connect another computer, enroll it as a separate client.</p>
+    <section id="connector-update-help" class="connector-update-help" aria-labelledby="connector-update-help-title" hidden><strong id="connector-update-help-title">Update this computer</strong><p>Download the current installer, then run it from a terminal. Your existing pairing and settings are kept.</p><a id="connector-dialog-update-download" class="button primary" href="/api/client/download/installer" download>Download update</a><code id="connector-dialog-update-command">bash ~/Downloads/Install-Codex-Connector.sh</code><p>This web page cannot run the installer or start local commands. The notice clears after the updated connector reconnects.</p></section>
+    <p id="connector-server" class="field-hint"></p>
+    <ol id="connector-setup-steps" class="connector-steps connector-quick-steps">
+      <li><strong id="connector-private-title">Download your private setup.</strong><p id="connector-private-description">It contains a one-time pairing value for this approved computer. It expires after 10 minutes, so do not share it.</p><button id="connector-private-installer" class="button primary" type="button">Download one-step setup</button></li>
+      <li><strong>Run one command.</strong><p>The setup asks once before allowing local file and terminal access. If this computer had an old or deleted identity, it repairs the link while keeping local settings.</p><code id="connector-private-command">bash ~/Downloads/Install-Codex-Connector.sh</code></li>
+    </ol>
+    <section id="connector-pairing-card" class="connector-pairing-card" hidden>
+      <div><strong>Pairing file</strong><p>For first setup or repairing a deleted identity. It is single-use, expires after 10 minutes, and its filename matches this Connector release.</p></div>
+      <button id="connector-pairing-primary" class="button" type="button">Download pairing file</button>
+    </section>
+    <details id="connector-manual-pairing" class="connector-manual-pairing">
+      <summary>Manual setup / repair · Download pairing file</summary>
+      <p>Normal updates keep your existing pairing and do not need this file. For first setup or a deleted link, download both files into the same folder. To explicitly repair an existing installation, run the command below; allow local access only for this computer.</p>
+      <div><a id="connector-installer" class="button" href="/api/client/download/installer" download>Download generic installer</a><button id="connector-pairing" class="button" type="button">Download pairing file</button></div>
+      <code id="connector-manual-command">bash ~/Downloads/Install-Codex-Connector.sh --pair-file ~/Downloads/codex-pairing.json</code>
+    </details>
+    <p class="connector-help">After installation, open <strong>Codex Connector</strong> from your Ubuntu applications to pause, resume, or check for updates. This web page cannot run an installer or start local commands.</p>
+    <p id="connector-status" class="status-text" role="status"></p>
+    <div class="connector-web-refresh"><span>Updated web interface? Reload this page without restarting the connector.</span><button id="connector-reload" class="button subtle" type="button">Reload page</button></div>
+  </dialog>
+  <dialog id="my-usage-dialog" class="room-dialog my-usage-dialog" aria-labelledby="my-usage-title">
+    <div class="dialog-heading"><h2 id="my-usage-title">My weekly usage</h2><button id="my-usage-close" class="icon-button" type="button" aria-label="Close my usage">×</button></div>
+    <p id="my-usage-status" class="usage-explanation" role="status"></p>
+    <div id="my-usage-meter" class="device-quota"></div>
+    <p id="my-usage-reset" class="quota-reset"></p>
+    <section id="my-usage-admin-controls" class="my-usage-admin-controls" hidden>
+      <div class="limit-field"><label for="my-usage-share-input">My weekly analysis target (% of account)</label><input id="my-usage-share-input" type="number" min="0.01" max="100" step="any" placeholder="No target"></div>
+      <button id="my-usage-share-save" class="button primary" type="button">Save my target</button>
+      <p class="usage-explanation">This target is for comparing your own usage. It never blocks the host administrator’s prompts; leave it blank to track this device’s estimated contribution without a target.</p>
+    </section>
+    <details class="my-usage-explanation" open><summary>How your usage is estimated</summary><p>Your meter shows the part of your assigned share attributed to this device. For example, using 50% of a 3% share means roughly 1.5 account-percentage points are attributed to this device; it does not mean the official account meter is 1.5%.</p><ul><li>Input and output have different weights for each model. Output includes reasoning tokens reported by the provider.</li><li>Cached input receives a lower weight when the provider reports it. Fast has a higher estimated usage weight.</li><li>This is an approximation, not an exact OpenAI debit or charge. Reports can arrive late; unknown usage is not free usage.</li><li>Changing your share does not erase what you have used. Your weekly period follows the provider’s reset, not a separate local Monday reset.</li></ul></details>
+    <section class="my-usage-tips" aria-labelledby="my-usage-tips-title"><h3 id="my-usage-tips-title">Make your share last</h3><ul><li>Choose Standard when you do not need Fast.</li><li>Use a smaller model and lower thinking effort for simple tasks when suitable.</li><li>Stop responses you no longer need; stopping does not undo usage already recorded.</li></ul></section>
+    <div class="dialog-actions"><span class="flex-spacer"></span><button id="my-usage-refresh" class="button" type="button">Refresh usage</button></div>
+  </dialog>
+  <dialog id="browser-login-dialog" class="room-dialog browser-login-dialog" aria-labelledby="browser-login-title" aria-describedby="browser-login-description">
+    <form id="browser-login-form">
+      <div class="dialog-heading"><div><p class="eyebrow">BROWSER ACCESS</p><h2 id="browser-login-title">Easy sign-in</h2></div><button id="browser-login-close" class="icon-button" type="button" aria-label="Close easy sign-in settings">×</button></div>
+      <p id="browser-login-description" class="browser-login-intro">Create a memorable login for browsers. Your private connector and recovery keys stay unchanged.</p>
+      <div id="browser-login-state" class="browser-login-state" role="status"><span class="browser-login-state-icon" aria-hidden="true">●</span><span><strong id="browser-login-state-title">Not set up</strong><small id="browser-login-state-detail">Use a login name and password instead of pasting a recovery key.</small></span></div>
+      <label for="browser-login-name">Login name</label>
+      <input id="browser-login-name" type="text" minlength="3" maxlength="64" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="browser-login-name-hint" required>
+      <p id="browser-login-name-hint" class="field-hint">Login names are not case-sensitive. Use a name you can remember.</p>
+      <label for="browser-login-password">New password</label>
+      <div class="password-field">
+        <input id="browser-login-password" type="password" minlength="8" maxlength="256" autocomplete="new-password" dir="ltr" aria-describedby="browser-login-password-hint" required>
+        <button id="browser-login-show" class="password-reveal" type="button" aria-label="Show new passwords" aria-controls="browser-login-password browser-login-confirm" aria-pressed="false">Show</button>
+      </div>
+      <p id="browser-login-password-hint" class="field-hint">Choose a memorable password that is not used for another account.</p>
+      <label for="browser-login-confirm">Confirm new password</label>
+      <input id="browser-login-confirm" type="password" minlength="8" maxlength="256" autocomplete="new-password" dir="ltr" required>
+      <p class="browser-login-session-note">Saving signs out other browser sessions for this device. This browser stays signed in.</p>
+      <p id="browser-login-status" class="status-text" role="status" aria-live="polite"></p>
+      <div id="browser-login-disable-confirm" class="browser-login-disable-confirm" role="alert" hidden>
+        <strong>Disable easy sign-in?</strong>
+        <p>You will need the private recovery key to sign in again. Connector access is not changed.</p>
+        <div><button id="browser-login-disable-cancel" class="button" type="button">Keep it</button><button id="browser-login-disable-confirm-button" class="button danger" type="button">Disable easy sign-in</button></div>
+      </div>
+      <div class="dialog-actions"><button id="browser-login-disable" class="button danger" type="button" aria-controls="browser-login-disable-confirm" aria-expanded="false" hidden>Disable</button><button id="browser-login-logout" class="button" type="button">Sign out</button><span class="flex-spacer"></span><button id="browser-login-cancel" class="button" type="button">Cancel</button><button id="browser-login-save" class="button primary" type="submit">Set up easy sign-in</button></div>
+    </form>
+  </dialog>
+  <dialog id="quick-switcher" class="quick-switcher" aria-labelledby="quick-switcher-title">
+    <div class="quick-switcher-shell">
+      <div class="quick-switcher-search"><span class="quick-switcher-symbol" aria-hidden="true">⌕</span><label id="quick-switcher-title" class="sr-only" for="quick-switcher-input">Quick switcher</label><input id="quick-switcher-input" type="search" role="combobox" placeholder="Jump to a room or action…" autocomplete="off" aria-controls="quick-switcher-results" aria-autocomplete="list" aria-expanded="true"><button id="quick-switcher-close" class="icon-button" type="button" aria-label="Close quick switcher" title="Close">×</button></div>
+      <div id="quick-switcher-results" class="quick-switcher-results" role="listbox" aria-label="Rooms and actions"></div>
+      <div class="quick-switcher-footer"><span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span><span><kbd>Enter</kbd> Open</span><span><kbd>Esc</kbd> Close</span></div>
+    </div>
+  </dialog>
+  <div id="toast" class="toast" hidden>
+    <span id="toast-message" class="toast-message" role="status" aria-live="polite" aria-atomic="true"></span>
+    <button id="toast-action" class="button toast-action" type="button" hidden></button>
+    <button id="toast-close" class="icon-button toast-close" type="button" aria-label="Dismiss notification" title="Dismiss notification"><span aria-hidden="true">×</span></button>
+  </div>
+</body>
+</html>

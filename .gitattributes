@@ -1,0 +1,20 @@
+# CODEX: Keep source and documentation line endings stable across development machines.
+* text=auto eol=lf
+
+# CODEX: Font and image assets are binary and must never receive text normalization.
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+
+# CODEX: Local-only material is excluded from source archives even if accidentally staged.
+private-reports/** export-ignore
+private-state/** export-ignore
+.env export-ignore
+.env.* export-ignore
+.env.example -export-ignore
+auth.json export-ignore
+codex-pairing*.json export-ignore

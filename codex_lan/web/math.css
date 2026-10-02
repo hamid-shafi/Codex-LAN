@@ -1,0 +1,7 @@
+/* CODEX: Native MathML stays left-to-right within Persian prose and inherits every room theme. */
+.math-render { color: inherit; direction: ltr; unicode-bidi: isolate; font-family: math; font-size: 1.08em; }
+.math-inline { display: inline-block; max-width: 100%; vertical-align: baseline; overflow-x: auto; overflow-y: hidden; }
+.math-display { display: block; max-width: 100%; overflow-x: auto; overflow-y: hidden; padding: .65em .2em; margin: .35em 0; text-align: center; }
+.math-render math { direction: ltr; font-family: math; color: inherit; }
+.math-display math { margin-inline: auto; min-width: max-content; }
+.math-render annotation { display: none; }

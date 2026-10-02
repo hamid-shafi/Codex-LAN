@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Codex app icon">
+  <defs>
+    <linearGradient id="background" x1="70" y1="40" x2="450" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#172a4c"/>
+      <stop offset="0.52" stop-color="#0d1c32"/>
+      <stop offset="1" stop-color="#09241f"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="120" y1="130" x2="395" y2="385" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#75a7ff"/>
+      <stop offset="1" stop-color="#31d19c"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#background)"/>
+  <rect x="38" y="38" width="436" height="436" rx="98" fill="none" stroke="#ffffff" stroke-opacity="0.09" stroke-width="4"/>
+  <path d="M105 143c0-35 28-63 63-63h174c35 0 63 28 63 63v105c0 35-28 63-63 63H230l-73 59c-15 12-37 1-35-18l7-46c-15-11-24-29-24-49V143z" fill="#f6f9ff"/>
+  <path d="M215 281h127c35 0 63-28 63-63v-15c18 11 30 31 30 54v80c0 34-27 61-61 61h-37l-56 43c-14 11-34 1-32-17l4-26h-38c-34 0-61-27-61-61v-1l61-55z" fill="url(#accent)"/>
+  <g fill="#183055">
+    <circle cx="319" cy="194" r="17"/>
+    <circle cx="255" cy="194" r="17"/>
+    <circle cx="191" cy="194" r="17"/>
+  </g>
+  <path d="M310 337h60" fill="none" stroke="#eafff8" stroke-width="13" stroke-linecap="round" opacity="0.88"/>
+</svg>

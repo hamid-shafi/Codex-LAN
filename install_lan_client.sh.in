@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# CODEX: Self-contained Ubuntu client installer; the builder appends its verified payload.
+set -Eeuo pipefail
+umask 077
+
+codex_lan_usage() {
+    printf '%s\n' \
+        'Codex LAN — Ubuntu client installer' \
+        '' \
+        'Usage: bash Install-Codex-LAN.sh [options]' \
+        '  --server USER@HOST   Required server SSH login; no host is preconfigured' \
+        '  --port PORT          Local tunnel port (default: 8766)' \
+        '  --no-launch          Install without opening the connection' \
+        '  --verify             Check the embedded package without installing' \
+        '  --help               Show this help' \
+        '' \
+        'This file includes Codex and offline dependencies for Linux x86-64 / Python 3.10.' \
+        'Run as your normal desktop user, not with sudo.' \
+        'Connection may ask for the SERVER password. Your client password is not needed.' \
+        'The administrator must approve this device before its first use.'
+}
+
+codex_lan_verify_only=0
+codex_lan_arguments=()
+while (($#)); do
+    case "$1" in
+        --help|-h) codex_lan_usage; exit 0 ;;
+        --verify) codex_lan_verify_only=1; shift ;;
+        --no-launch) codex_lan_arguments+=("$1"); shift ;;
+        --server|--port)
+            if (($# < 2)) || [[ "$2" == --* ]]; then
+                printf 'Missing value for %s\n' "$1" >&2; exit 2
+            fi
+            codex_lan_arguments+=("$1" "$2"); shift 2 ;;
+        *) printf 'Unknown option: %s\nUse --help for available options.\n' "$1" >&2; exit 2 ;;
+    esac
+done
+
+for codex_lan_command in awk tail mktemp tar sha256sum; do
+    if ! command -v "$codex_lan_command" >/dev/null 2>&1; then
+        printf 'Required command is missing: %s\n' "$codex_lan_command" >&2; exit 1
+    fi
+done
+
+codex_lan_python=''
+if (( ! codex_lan_verify_only )); then
+    if ((EUID == 0)); then
+        printf '%s\n' 'Run this installer as your normal desktop user, without sudo.' >&2; exit 1
+    fi
+    if [[ "$(uname -s)" != Linux || "$(uname -m)" != x86_64 ]]; then
+        printf '%s\n' 'This package requires Ubuntu/Linux x86-64.' >&2; exit 1
+    fi
+    for codex_lan_candidate in python3.10 python3; do
+        if command -v "$codex_lan_candidate" >/dev/null 2>&1 && \
+           "$codex_lan_candidate" -c 'import sys; raise SystemExit(sys.version_info[:2] != (3, 10))'; then
+            codex_lan_python="$(command -v "$codex_lan_candidate")"; break
+        fi
+    done
+    if [[ -z "$codex_lan_python" ]]; then
+        printf '%s\n' 'This offline package needs Python 3.10. No files were installed.' >&2; exit 1
+    fi
+    for codex_lan_command in ssh systemctl; do
+        if ! command -v "$codex_lan_command" >/dev/null 2>&1; then
+            printf 'Required command is missing: %s\n' "$codex_lan_command" >&2; exit 1
+        fi
+    done
+    if ! systemctl --user show-environment >/dev/null 2>&1; then
+        printf '%s\n' 'Open a terminal in your logged-in Ubuntu desktop and run this file there.' >&2; exit 1
+    fi
+fi
+
+codex_lan_workdir="$(mktemp -d /tmp/codex-lan-install.XXXXXXXXXX)"
+codex_lan_cleanup() {
+    # CODEX: Only the freshly created private extraction directory is removed.
+    case "$codex_lan_workdir" in
+        /tmp/codex-lan-install.??????????) rm -rf -- "$codex_lan_workdir" ;;
+    esac
+}
+trap codex_lan_cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'printf "Installation stopped at line %s. Existing chats and device approval were preserved.\n" "$LINENO" >&2' ERR
+
+codex_lan_line="$(awk '/^__CODEX_LAN_PAYLOAD_BELOW__$/ { print NR + 1; exit }' "$0")"
+if [[ ! "$codex_lan_line" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' 'The embedded package is missing. Download the complete installer.' >&2; exit 1
+fi
+printf '%s\n' '[1/3] Checking the embedded package…'
+tail -n +"$codex_lan_line" -- "$0" > "$codex_lan_workdir/client.tar.gz"
+codex_lan_actual="$(sha256sum "$codex_lan_workdir/client.tar.gz")"
+codex_lan_actual="${codex_lan_actual%% *}"
+if [[ "$codex_lan_actual" != '@PAYLOAD_SHA256@' ]]; then
+    printf '%s\n' 'The package is incomplete or damaged. Nothing was installed; copy the file again.' >&2; exit 1
+fi
+if ((codex_lan_verify_only)); then
+    printf '%s\n' 'Package verified successfully. No installation or connection was started.'; exit 0
+fi
+
+printf '%s\n' '[2/3] Unpacking the offline client…'
+tar --extract --gzip --file "$codex_lan_workdir/client.tar.gz" \
+    --directory "$codex_lan_workdir" --no-same-owner --no-same-permissions
+printf '%s\n' '[3/3] Installing for your desktop user…'
+"$codex_lan_python" "$codex_lan_workdir/Codex-LAN-Client/setup_lan_client.py" "${codex_lan_arguments[@]}"
+printf '%s\n' '' 'Done. Use the “Codex LAN” application launcher next time.'
+exit 0
+__CODEX_LAN_PAYLOAD_BELOW__

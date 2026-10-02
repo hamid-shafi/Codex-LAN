@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Codex
+Comment=Desktop chat for Codex with rooms, models, Markdown, and images
+Exec=@APP_DIR@/run.sh
+Icon=codex
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true
+StartupWMClass=Codex
+Keywords=Codex;ChatGPT;AI;Assistant;Chat;
