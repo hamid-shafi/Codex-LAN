@@ -50,6 +50,20 @@ original `.git`, and leaves the original checkout and its history untouched.
 Connect the new repository to GitHub only after reviewing its staged contents.
 No helper automatically uploads or publishes anything.
 
+## One codebase, separate private state
+
+Keep the development checkout and the reviewed GitHub-ready checkout on the
+same source and documentation contents. Record each project change in both
+repositories, staging only the files belonging to that change and preserving
+unrelated work. If their histories are separate for privacy, keep those histories
+separate; do not merge private history into the reviewed repository.
+
+Installation databases, conversations, usage records, credentials, pairing files,
+TLS keys, local configuration, and backups remain outside the source repository.
+Synchronizing source does not copy private state, restart the running application,
+or authorize a push to GitHub. Run the publication and history checks on the
+GitHub-ready checkout before any explicitly requested publication.
+
 ## Private local reports and migration
 
 To keep a small aggregate installation snapshot locally:

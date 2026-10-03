@@ -1,5 +1,7 @@
 # Codex LAN
 
+**Start here:** [One-page overview](OVERVIEW.md) · [Development story](STORY.md).
+
 A shared, private-network workspace around the official Codex app server, with a
 browser interface and a Linux host. People have separate rooms and access limits;
 the host owns the Codex login. No OpenAI API key belongs in this repository.
