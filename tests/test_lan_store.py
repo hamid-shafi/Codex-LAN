@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import os
+import stat
 import sys
 import tempfile
 import threading
@@ -16,6 +18,95 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from codex_lan.store import DeviceBusyError, RoomBusyError, Store, title_from_first_prompt
+
+
+class PrivateStoreStateTests(unittest.TestCase):
+    def test_existing_public_directory_and_database_are_tightened_before_open(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "server"
+            previous_umask = os.umask(0o022)
+            try:
+                path.mkdir(mode=0o755)
+                store = Store(path)
+                try:
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o700)
+                    store.bootstrap_admin("Test host")
+                    for name in ("server.sqlite3", "server.sqlite3-wal", "server.sqlite3-shm"):
+                        self.assertEqual(stat.S_IMODE((path / name).stat().st_mode), 0o600)
+                finally:
+                    store.close()
+            finally:
+                os.umask(previous_umask)
+
+            (path / "server.sqlite3").chmod(0o644)
+            path.chmod(0o755)
+            store = Store(path)
+            try:
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o700)
+                self.assertEqual(stat.S_IMODE(store.db_path.stat().st_mode), 0o600)
+                self.assertEqual(len(store.list_devices(store.db.execute(
+                    "SELECT id FROM devices WHERE is_admin=1"
+                ).fetchone()[0])), 1)
+            finally:
+                store.close()
+
+    def test_existing_wal_and_shm_modes_are_tightened_without_losing_data(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            first = Store(path)
+            admin = first.bootstrap_admin("Test host")
+            try:
+                for name in ("server.sqlite3", "server.sqlite3-wal", "server.sqlite3-shm"):
+                    (path / name).chmod(0o644)
+                second = Store(path)
+                try:
+                    self.assertEqual(second.authenticate(admin["token"])["id"], admin["device"]["id"])
+                    for name in ("server.sqlite3", "server.sqlite3-wal", "server.sqlite3-shm"):
+                        self.assertEqual(stat.S_IMODE((path / name).stat().st_mode), 0o600)
+                finally:
+                    second.close()
+            finally:
+                first.close()
+
+    def test_state_directory_and_ancestor_symlinks_are_rejected_without_chmod(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target"
+            target.mkdir()
+            target.chmod(0o755)
+            linked = root / "linked"
+            linked.symlink_to(target, target_is_directory=True)
+            for path in (linked, linked / "child"):
+                with self.subTest(path=path), self.assertRaises(ValueError):
+                    Store(path)
+            self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o755)
+            self.assertFalse((target / "child").exists())
+
+    def test_database_sidecar_symlinks_and_hardlinks_are_rejected(self):
+        for name in ("server.sqlite3", "server.sqlite3-wal", "server.sqlite3-shm", "server.sqlite3-journal"):
+            for kind in ("symlink", "hardlink"):
+                with self.subTest(name=name, kind=kind), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    target = root / "other-private-file"
+                    target.write_bytes(b"must not be opened as database state")
+                    target.chmod(0o644)
+                    state = root / "server"
+                    state.mkdir()
+                    if kind == "symlink":
+                        (state / name).symlink_to(target)
+                    else:
+                        os.link(target, state / name)
+                    with self.assertRaises(ValueError):
+                        Store(state)
+                    self.assertEqual(target.read_bytes(), b"must not be opened as database state")
+                    self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o644)
+
+    def test_database_fifo_is_rejected_without_waiting_for_a_writer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            os.mkfifo(path / "server.sqlite3", mode=0o600)
+            with self.assertRaises(ValueError):
+                Store(path)
 
 
 class LanStoreTests(unittest.TestCase):
@@ -279,6 +370,58 @@ class LanStoreTests(unittest.TestCase):
                 self.store.add_attachment(
                     self.a_id, "over.png", "image/png", 1, "/server/over.png"
                 )
+            second_store.close()
+
+    def test_attachment_count_quota_bounds_empty_and_tiny_files_per_device(self):
+        self.approve()
+        with mock.patch("codex_lan.store.MAX_ATTACHMENT_COUNT", 2):
+            empty = self.store.add_attachment(
+                self.a_id, "empty.txt", "application/octet-stream", 0, "/server/empty.txt"
+            )
+            self.store.add_attachment(
+                self.a_id, "tiny.txt", "application/octet-stream", 1, "/server/tiny.txt"
+            )
+            with self.assertRaisesRegex(ValueError, "file-count limit"):
+                self.store.add_attachment(
+                    self.a_id, "extra.txt", "application/octet-stream", 0, "/server/extra.txt"
+                )
+            self.store.add_attachment(
+                self.b_id, "other.txt", "application/octet-stream", 0, "/server/other.txt"
+            )
+            self.assertTrue(self.store.discard_attachment(self.a_id, empty["id"])["deleted"])
+            self.store.add_attachment(
+                self.a_id, "replacement.txt", "application/octet-stream", 0, "/server/replacement.txt"
+            )
+            self.assertEqual(self.store.db.execute(
+                "SELECT COUNT(*) FROM attachments WHERE owner_id=?", (self.a_id,)
+            ).fetchone()[0], 2)
+
+    def test_attachment_count_quota_serializes_competing_store_writers(self):
+        self.approve()
+        second_store = Store(self.path)
+        try:
+            with mock.patch("codex_lan.store.MAX_ATTACHMENT_COUNT", 2):
+                self.store.add_attachment(
+                    self.a_id, "first.txt", "application/octet-stream", 0, "/server/first.txt"
+                )
+
+                def add_competing(index):
+                    try:
+                        (self.store if index % 2 else second_store).add_attachment(
+                            self.a_id, f"empty-{index}.txt", "application/octet-stream", 0,
+                            f"/server/empty-{index}.txt",
+                        )
+                    except ValueError:
+                        return False
+                    return True
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                    accepted = list(pool.map(add_competing, range(8)))
+                self.assertEqual(sum(accepted), 1)
+                self.assertEqual(self.store.db.execute(
+                    "SELECT COUNT(*) FROM attachments WHERE owner_id=?", (self.a_id,)
+                ).fetchone()[0], 2)
+        finally:
             second_store.close()
 
     def test_generated_artifact_delivery_intent_is_committed_persistent_and_idempotent(self):

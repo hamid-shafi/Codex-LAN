@@ -2,9 +2,16 @@
 
 **Start here:** [One-page overview](OVERVIEW.md) · [Development story](STORY.md).
 
-A shared, private-network workspace around the official Codex app server, with a
-browser interface and a Linux host. People have separate rooms and access limits;
-the host owns the Codex login. No OpenAI API key belongs in this repository.
+**Share your Codex with your team at work.** Codex LAN turns one Linux host into
+a shared coding-assistant workspace for approved coworkers on a trusted office
+network. People connect from their own browsers, keep separate conversations and
+access limits, and use native Connectors to work on their own computers. The host
+owns the Codex login; teammates do not need its login credentials.
+
+This is an independent interface around the official Codex app server—not an
+OpenAI product or a public account-sharing service. Use it only with authorized,
+trusted colleagues and within your organization's and provider's access rules.
+No OpenAI API key belongs in this repository.
 
 The browser supports Persian/RTL content, Markdown and math, file attachments,
 independent model/thinking controls, read-only turns, streaming activity, persistent
@@ -43,7 +50,7 @@ status, and safe next actions. Privileged firewall/OS changes still require loca
 operating-system approval, not a password entered into this app.
 
 See [the complete setup guide](docs/SETUP.md), [laptop migration and private backups](docs/MIGRATION.md),
-and [the architecture and client/server guide](CLIENT_SERVER.md).
+and [the current architecture and Connector guide](LAN-RELEASES.md).
 
 ## Trust and access
 

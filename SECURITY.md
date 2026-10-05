@@ -25,6 +25,11 @@ private information. Review screenshots, sample content, generated bundles,
 issue attachments, and release archives separately. Automated GitHub secret
 scanning complements this local check.
 
+Compressed archives and private release bundles are not source exports. The
+publication check rejects archive filenames and recognized archive signatures,
+including archives renamed to look like text. It does not unpack private data or
+print its contents. Keep backups and installation bundles outside the repository.
+
 If local history contains personal paths, machine addresses, author email, or
 private files, keep that original checkout private and export reviewed source:
 
@@ -51,6 +56,22 @@ Full-access turns can read files and execute commands as the authorized Linux
 user. Read-only is the appropriate setting for inspection. This application is
 not an isolation boundary for mutually untrusted users or for a public Internet
 deployment. Do not publish an account shared with unknown parties.
+
+Local server state is owner-only: the data directory uses `0700`, and SQLite
+database/WAL/SHM/journal files use `0600`. Unsafe links, nonregular database files,
+or foreign ownership are refused rather than silently followed. These checks do
+not protect against someone who already controls the host's operating-system
+account.
+
+Enrollment attempts reserve their rate-limit slot before reading the request
+body. Attachment storage is capped per device at 512 MiB and 2,048 retained files,
+including empty files. These limits never delete existing conversations or files.
+File uploads are admitted before body buffering, with at most eight globally and
+four per device; excess requests receive `429` rather than joining an unbounded
+queue. Cancelled disk writes retain their slot until cleanup completes.
+Private setup downloads verify the pinned HTTPS server, bypass ambient proxies,
+and refuse redirects. Untrusted Markdown has bounded quote nesting and safe text
+fallbacks; raw HTML and unsafe link schemes are not activated.
 
 ## Reporting a vulnerability
 

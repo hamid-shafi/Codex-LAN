@@ -25,6 +25,10 @@ commit messages. It separately flags author identity metadata for review. It
 never prints matched credential values. An automated scan does not replace a
 human review of screenshots, text fixtures, or release archives.
 
+Compressed archives are refused by filename and recognized content signatures,
+even if renamed to `.txt`. A source export is not a backup or a Connector bundle;
+keep those artifacts outside Git and distribute them separately after review.
+
 If old local history contains personal information, do not push that history.
 Make a clean export into a new directory:
 

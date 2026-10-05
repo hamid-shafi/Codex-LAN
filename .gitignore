@@ -25,6 +25,18 @@ releases/
 *.egg-info/
 *.whl
 *.tar.gz
+*.zip
+*.tar
+*.tgz
+*.tbz
+*.tbz2
+*.txz
+*.gz
+*.bz2
+*.xz
+*.zst
+*.7z
+*.rar
 pip.pyz
 
 # CODEX: Runtime databases, logs, sockets, backups, and temporary files are private local state.
@@ -60,6 +72,9 @@ admin.token
 host-worker.token
 device-token
 connector.token
+connection.json
+network.json
+client-state.json
 codex-pairing*.json
 pairing*.json
 Install-Codex-Connector*-private*.sh

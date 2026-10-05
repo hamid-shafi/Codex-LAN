@@ -4,6 +4,8 @@
 
 Codex LAN began with Hamid wanting a better place to talk to his coding assistant. It grew into a private-network workspace with independent conversations, local-computer access, visible execution, usage controls, and a carefully shaped interface.
 
+Its defining capability became **sharing Codex with coworkers at work**: one Linux host provides the assistant, while approved teammates join through their browsers, keep their own conversations, and use Connectors for work on their own computers. Hamid did not just want a nicer personal chat—he wanted the assistant to become a useful resource for the people around him, without distributing the host's Codex login credentials.
+
 Hamid conceived and directed the product. Codex was the implementation partner: suggesting designs, writing code, investigating failures, and building tests. The underlying AI and Codex app server come from OpenAI; this project is an independent interface and orchestration layer, not an OpenAI product.
 
 This is the story of that collaboration—not a claim that the first generated version got everything right.
@@ -108,6 +110,8 @@ Codex implemented attribution, deduplication, reconciliation, and diagnostic che
 
 ## 8. The shared host should not become everybody's computer
 
+This is the project's central workplace use case: someone sets up a Codex host on a trusted office network, and approved coworkers can use it from their own desks. A personal tool becomes a team workspace. Separate rooms, device approval, per-person concurrency and usage allocations, revocation, and client-side execution make that sharing manageable rather than a common password passed around the office.
+
 The LAN expansion introduced a subtle requirement: a central host can run Codex, but work requested for a client must reach the correct client's files and artifacts.
 
 Hamid wanted people to connect through a browser without exchanging SSH passwords or manually managing a maze of terminal commands. Codex proposed a small native Connector because a browser alone cannot provide arbitrary local filesystem and command access.
@@ -117,6 +121,8 @@ The architecture separates the Linux host, browser session, and approved native 
 Pairing and updates became a product concern too: versioned installer and pairing names, clearer download commands, persistent pairing across host restarts, and a simpler personal setup flow. Administration moved toward compact rows and expandable profiles rather than walls of technical detail.
 
 For easier login, Hamid asked for a friendlier alternative to copying raw credentials. Codex proposed password-based browser sign-in with hashed passwords and a separate browser session, while retaining distinct Connector credentials instead of weakening them into a convenient shared token.
+
+The distinction matters: sharing access to an approved workplace assistant is the product goal; sharing raw account credentials is not. This architecture is for authorized, trusted colleagues operating within their organization's and provider's rules—not for selling public access or claiming isolation from hostile users.
 
 ## 9. Beauty through feedback, not constant distraction
 
@@ -183,7 +189,7 @@ This remains a trusted-LAN project, not a hardened public-internet or hostile mu
 
 ## What this collaboration demonstrates
 
-Codex LAN was shaped by small, persistent acts of product judgment: a percentage needs the right denominator; a selected passage deserves two different kinds of exploration; a notification should respect attention; a saved log should survive the final answer; and a beautiful animation should not make the whole workspace restless.
+Codex LAN's biggest product decision was making a personal coding assistant usable by a team at work. The supporting details came from small, persistent acts of product judgment: a percentage needs the right denominator; a selected passage deserves two different kinds of exploration; a notification should respect attention; a saved log should survive the final answer; and a beautiful animation should not make the whole workspace restless.
 
 Hamid contributed the vision, original interaction ideas, detailed criticism, priorities, and decisions about what stayed or was removed. Codex contributed proposals, implementation, investigation, tests, and specific design treatments. Real use supplied the pressure that neither a feature list nor a first prototype could have provided.
 

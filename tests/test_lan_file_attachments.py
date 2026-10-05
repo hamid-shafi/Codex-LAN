@@ -1,12 +1,13 @@
 """CODEX: Files stay inert, private, bounded, and readable on the actual executor."""
 
+import asyncio
 import json
 import stat
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientSession, FormData, web
 from aiohttp.test_utils import TestServer
@@ -25,6 +26,100 @@ class LanFileAttachmentsTests(unittest.IsolatedAsyncioTestCase):
     room = fixture.LanServerTests.room
     submit_run = fixture.LanServerTests.submit_run
     ready_run = fixture.LanServerTests.ready_run
+
+    def fake_upload_request(self, device, content=b"tiny"):
+        part = SimpleNamespace(
+            name="file", filename="fixture.txt", read_chunk=AsyncMock(side_effect=[content, b""]),
+        )
+        request = MagicMock()
+        request.__getitem__.return_value = device["device"]
+        request.multipart = AsyncMock(return_value=SimpleNamespace(next=AsyncMock(return_value=part)))
+        return request
+
+    async def test_upload_limits_reject_before_reading_and_allow_other_owners(self):
+        blocked = asyncio.Event()
+        tasks = []
+        try:
+            for _ in range(4):
+                request = self.fake_upload_request(self.a)
+                request.multipart.side_effect = blocked.wait
+                tasks.append(asyncio.create_task(self.service.upload(request)))
+            await self.until(lambda: self.service.active_uploads == 4)
+            rejected = self.fake_upload_request(self.a)
+            with self.assertRaises(web.HTTPTooManyRequests) as failure:
+                await self.service.upload(rejected)
+            self.assertEqual(failure.exception.headers["Retry-After"], "2")
+            rejected.multipart.assert_not_awaited()
+            allowed = await self.service.upload(self.fake_upload_request(self.b))
+            self.assertEqual(allowed.status, 201)
+            self.assertEqual(self.service.active_uploads, 4)
+            for _ in range(4):
+                request = self.fake_upload_request(self.b)
+                request.multipart.side_effect = blocked.wait
+                tasks.append(asyncio.create_task(self.service.upload(request)))
+            await self.until(lambda: self.service.active_uploads == 8)
+            global_rejected = self.fake_upload_request(self.admin)
+            with self.assertRaises(web.HTTPTooManyRequests):
+                await self.service.upload(global_rejected)
+            global_rejected.multipart.assert_not_awaited()
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self.assertEqual(self.service.active_uploads, 0)
+        self.assertEqual(self.service.device_uploads, {})
+
+    async def test_failed_upload_releases_slot_on_validation_and_disk_errors(self):
+        invalid = self.fake_upload_request(self.a)
+        invalid.multipart.side_effect = ValueError("invalid multipart")
+        with self.assertRaises(ValueError):
+            await self.service.upload(invalid)
+        self.assertEqual(self.service.active_uploads, 0)
+        with patch("codex_lan.server.asyncio.to_thread", side_effect=OSError("synthetic disk failure")):
+            with self.assertRaises(OSError):
+                await self.service.upload(self.fake_upload_request(self.a))
+        self.assertEqual(self.service.active_uploads, 0)
+        self.assertEqual(self.service.device_uploads, {})
+        self.assertEqual(list(self.service.upload_dir.iterdir()), [])
+
+    async def test_cancelled_upload_keeps_slot_until_writer_finishes_and_removes_its_file(self):
+        entered, proceed = asyncio.Event(), asyncio.Event()
+
+        async def delayed_write(function, *args, **kwargs):
+            entered.set()
+            await proceed.wait()
+            return function(*args, **kwargs)
+
+        with patch("codex_lan.server.asyncio.to_thread", side_effect=delayed_write):
+            task = asyncio.create_task(self.service.upload(self.fake_upload_request(self.a)))
+            try:
+                await asyncio.wait_for(entered.wait(), 2)
+                task.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await task
+                self.assertEqual(self.service.active_uploads, 1)
+            finally:
+                proceed.set()
+                await self.until(lambda: self.service.active_uploads == 0)
+        self.assertEqual(self.service.device_uploads, {})
+        self.assertEqual(list(self.service.upload_dir.iterdir()), [])
+        self.assertEqual(self.service.store.db.execute("SELECT COUNT(*) FROM attachments").fetchone()[0], 0)
+
+    async def test_attachment_count_limit_does_not_leave_rejected_upload_files(self):
+        with patch("codex_lan.store.MAX_ATTACHMENT_COUNT", 1):
+            form = FormData()
+            form.add_field("file", b"", filename="empty.txt")
+            first = await self.request("POST", "/api/attachments", self.a, expected=201, data=form)
+            existing = set(self.service.upload_dir.iterdir())
+            form = FormData()
+            form.add_field("file", b"tiny", filename="next.txt")
+            rejected = await self.request("POST", "/api/attachments", self.a, expected=400, data=form)
+            self.assertIn("file-count limit", rejected["error"])
+            self.assertEqual(set(self.service.upload_dir.iterdir()), existing)
+            self.assertEqual(self.service.store.get_attachment(self.a["device"]["id"], first["id"])["size"], 0)
+            form = FormData()
+            form.add_field("file", b"", filename="other.txt")
+            await self.request("POST", "/api/attachments", self.b, expected=201, data=form)
 
     async def test_files_download_privately_and_native_turn_receives_path_not_contents(self):
         worker = await self.worker(self.a, "file-client")

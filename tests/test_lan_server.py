@@ -211,6 +211,42 @@ class LanServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cookie["samesite"], "Strict")
         self.assertNotIn("FAKE-NOT-A-CREDENTIAL", await response.text())
 
+    async def test_concurrent_enrollments_reserve_rate_slots_before_reading_bodies(self):
+        release_bodies = asyncio.Event()
+        reading_bodies = 0
+        devices_before = self.service.store.db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+
+        async def delayed_body(request):
+            nonlocal reading_bodies
+            reading_bodies += 1
+            await release_bodies.wait()
+            return {"name": "Concurrent temporary enrollment"}
+
+        with mock.patch("codex_lan.server.body", side_effect=delayed_body):
+            tasks = [asyncio.create_task(self.client.post("/api/enroll", json={})) for _ in range(25)]
+            try:
+                await self.until(lambda: reading_bodies + sum(task.done() for task in tasks) == 25)
+            finally:
+                release_bodies.set()
+            responses = await asyncio.gather(*tasks)
+
+        self.assertEqual(reading_bodies, 20)
+        self.assertEqual(sorted(response.status for response in responses), [201] * 20 + [429] * 5)
+        self.assertEqual(len(self.service.enrollments), 20)
+        self.assertEqual(self.service.store.db.execute("SELECT COUNT(*) FROM devices").fetchone()[0],
+                         devices_before + 20)
+        for response in responses:
+            await response.read()
+
+    async def test_invalid_enrollment_bodies_consume_rate_slots_and_expire_normally(self):
+        for _ in range(20):
+            await self.request("POST", "/api/enroll", expected=400, json=[])
+        await self.request("POST", "/api/enroll", expected=429, json={"name": "Limited temporary enrollment"})
+        self.assertEqual(len(self.service.enrollments), 20)
+        self.service.enrollments = [time.monotonic() - 61] * 20
+        await self.request("POST", "/api/enroll", expected=201, json={"name": "Allowed after expiry"})
+        self.assertEqual(len(self.service.enrollments), 1)
+
     async def test_remote_worker_rejected_before_auth_refresh(self):
         called = False
 

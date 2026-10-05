@@ -6,12 +6,14 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict, dataclass
 import hashlib
+import io
 import json
 from pathlib import Path, PurePosixPath
 import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 
 MAX_FILE_BYTES = 8 * 1024 * 1024
@@ -90,6 +92,14 @@ PRIVATE_SUFFIX = re.compile(
     r"\.(?:sqlite3?|db)(?:-.*)?$|\.(?:log|token|pem|key|p12|pfx|bak|backup|whl|pyc)$",
     re.I,
 )
+ARCHIVE_SUFFIX = re.compile(
+    r"\.(?:zip|tar|tgz|tbz2?|txz|gz|bz2|xz|zst|7z|rar)$", re.I,
+)
+ARCHIVE_SIGNATURES = (
+    b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08", b"\x1f\x8b",
+    b"BZh", b"\xfd7zXZ\x00", b"\x28\xb5\x2f\xfd", b"7z\xbc\xaf\x27\x1c",
+    b"Rar!\x1a\x07",
+)
 
 
 @dataclass(frozen=True)
@@ -117,6 +127,7 @@ def private_path(path: str) -> bool:
         or name in PRIVATE_NAMES
         or name == ".env" or (name.startswith(".env.") and name != ".env.example")
         or bool(PRIVATE_SUFFIX.search(name))
+        or bool(ARCHIVE_SUFFIX.search(name))
         or name.startswith(("codex-pairing", "pairing")) and name.endswith(".json")
         or "private" in name.lower() and name.endswith((".sh", ".tar.gz", ".zip"))
     )
@@ -134,6 +145,12 @@ def inspect_bytes(path: str, data: bytes, origin: str = "worktree") -> list[Find
         findings.append(Finding(displayed_path, 0, "private-runtime-file", origin))
     if len(data) > MAX_FILE_BYTES:
         return findings + [Finding(displayed_path, 0, "file-exceeds-review-limit", origin)]
+    # Compressed credentials cannot be inspected as ordinary source text. Check
+    # content too, including ZIPs with a self-extracting/text prefix. This checks
+    # bounded metadata only; it never extracts or decompresses private contents.
+    if (data.startswith(ARCHIVE_SIGNATURES) or data[257:263] in (b"ustar\x00", b"ustar ")
+            or zipfile.is_zipfile(io.BytesIO(data))):
+        findings.append(Finding(displayed_path, 0, "opaque-archive", origin))
     for category, pattern in (
         ("provider-secret", SECRET), ("private-key", PRIVATE_KEY),
         ("literal-credential", ASSIGNMENT), ("personal-machine-identity", LOCAL_IDENTITY),

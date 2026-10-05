@@ -10,6 +10,7 @@ import os
 import re
 import secrets
 import sqlite3
+import stat
 import threading
 import time
 import unicodedata
@@ -26,6 +27,8 @@ LIVE_STATUSES = frozenset({"queued", "running"})
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled", "interrupted"})
 DEVICE_STATUSES = frozenset({"pending", "approved", "revoked", "rejected"})
 MAX_ATTACHMENT_STORAGE_BYTES = 512 * 1024 * 1024
+# CODEX: A byte quota alone does not bound empty/tiny files or their database rows.
+MAX_ATTACHMENT_COUNT = 2048
 MAX_RECOVERED_RESPONSE_CHARACTERS = 2 * 1024 * 1024
 MAX_RECOVERED_DELTA_EVENTS = 10_000
 RECOVERED_RESPONSE_OMITTED = "\n\n… [additional recovered response omitted]"
@@ -76,6 +79,42 @@ class DeviceBusyError(ValueError):
     """CODEX: A device with queued or running work cannot be deleted safely."""
 
 
+def _prepare_private_database(data_dir: Path) -> None:
+    """CODEX: Protect chat/password state even when callers have a permissive umask."""
+    # Refuse directory indirection before tightening permissions on any existing path.
+    if any(path.is_symlink() for path in (data_dir, *data_dir.absolute().parents)):
+        raise ValueError("Server data directories must not use symlinks")
+    data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    directory = os.open(data_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        metadata = os.fstat(directory)
+        if metadata.st_uid != os.getuid():
+            raise ValueError("Server data directory must belong to the current user")
+        os.fchmod(directory, 0o700)
+        # SQLite inherits the main database's mode for new WAL/SHM files. Repair
+        # existing sidecars too, and never chmod/follow a substituted link or FIFO.
+        for name in ("server.sqlite3", "server.sqlite3-wal", "server.sqlite3-shm", "server.sqlite3-journal"):
+            flags = os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK
+            if name == "server.sqlite3":
+                flags |= os.O_CREAT
+            try:
+                descriptor = os.open(name, flags, 0o600, dir_fd=directory)
+            except FileNotFoundError:
+                continue
+            except OSError:
+                raise ValueError("Private database state must use regular owned files, not links") from None
+            try:
+                metadata = os.fstat(descriptor)
+                if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid()
+                        or metadata.st_nlink != 1):
+                    raise ValueError("Private database state must use regular owned files, not links")
+                os.fchmod(descriptor, 0o600)
+            finally:
+                os.close(descriptor)
+    finally:
+        os.close(directory)
+
+
 class Store(CompanionStoreMixin):
     """CODEX: Trusted server operations; never expose internal methods as RPC."""
 
@@ -83,7 +122,7 @@ class Store(CompanionStoreMixin):
         self.data_dir = Path(data_dir) if data_dir is not None else Path(
             os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))
         ) / "codex-lan"
-        self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        _prepare_private_database(self.data_dir)
         self.db_path = self.data_dir / "server.sqlite3"
         self._lock = threading.RLock()
         self.db = sqlite3.connect(
@@ -189,6 +228,7 @@ class Store(CompanionStoreMixin):
                     path TEXT NOT NULL,
                     created_at REAL NOT NULL
                 );
+                CREATE INDEX IF NOT EXISTS attachment_owner_size ON attachments(owner_id, size);
                 CREATE TABLE IF NOT EXISTS runs (
                     id TEXT PRIMARY KEY,
                     owner_id TEXT NOT NULL REFERENCES devices(id),
@@ -1689,15 +1729,20 @@ class Store(CompanionStoreMixin):
             attachment_id = self._id()
             inserted = self.db.execute(
                 "INSERT INTO attachments(id,owner_id,name,mime,size,path,created_at) "
-                "SELECT ?,?,?,?,?,?,? WHERE "
-                "(SELECT COALESCE(SUM(size),0) FROM attachments WHERE owner_id=?) + ? <= ?",
+                "SELECT ?,?,?,?,?,?,? FROM ("
+                "SELECT COALESCE(SUM(size),0) AS used_bytes,COUNT(*) AS stored_files "
+                "FROM attachments WHERE owner_id=?) "
+                "WHERE used_bytes + ? <= ? AND stored_files < ?",
                 (
                     attachment_id, device_id, name, mime, size, path, time.time(),
-                    device_id, size, MAX_ATTACHMENT_STORAGE_BYTES,
+                    device_id, size, MAX_ATTACHMENT_STORAGE_BYTES, MAX_ATTACHMENT_COUNT,
                 ),
             ).rowcount
             if inserted != 1:
-                raise ValueError("This device's attachment storage is full.")
+                raise ValueError(
+                    "This device's attachment storage is full (byte or file-count limit). "
+                    "Remove unused uploads or old rooms before uploading more."
+                )
             return self._row(self._attachment(device_id, attachment_id))
 
     def get_attachment(self, device_id: str, attachment_id: str) -> dict[str, Any]:

@@ -10,6 +10,7 @@ import re
 import ssl
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -199,6 +200,43 @@ class LanClientAccessTests(unittest.IsolatedAsyncioTestCase):
         await self.claim(pairing, expected=403)
         response = await self.client.post("/api/client/bootstrap/installer", json=pairing)
         self.assertEqual(response.status, 403, await response.text())
+
+    def test_private_bootstrap_download_ignores_proxies_and_refuses_all_redirects(self):
+        pairing = {
+            "format": 1, "server": self.network["public_origin"],
+            "pairing_code": "synthetic-pairing-code-for-test-only", "device_id": "fixture-device",
+            "ca_certificate": self.network["ca"].read_text(), "connector_version": "0.3.0",
+        }
+        script = ClientAccess._bootstrap_script(pairing)
+        python = re.search(r"<<'CODEX_BOOTSTRAP_PY'\n(.*?)\nCODEX_BOOTSTRAP_PY", script, re.S).group(1)
+        root = Path(self.temp.name) / "synthetic-bootstrap"
+        root.mkdir(mode=0o700)
+        (root / "pairing.b64").write_bytes(base64.b64encode(json.dumps(pairing).encode()))
+        installer = b"#!/usr/bin/env bash\nexit 0\n"
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.headers = {"Content-Length": str(len(installer))}
+        response.read.side_effect = (installer, b"")
+        namespace = {}
+        builder = urllib.request.build_opener
+        with patch("sys.argv", ["bootstrap", str(root)]), \
+                patch.dict("os.environ", {"HTTP_PROXY": "http://proxy.invalid:8080", "HTTPS_PROXY": "http://proxy.invalid:8080"}), \
+                patch("urllib.request.build_opener", wraps=builder) as build, \
+                patch("urllib.request.OpenerDirector.open", return_value=response) as opened:
+            exec(compile(python, "<synthetic private bootstrap>", "exec"), namespace)
+        handlers = build.call_args.args
+        self.assertIsInstance(handlers[0], urllib.request.ProxyHandler)
+        self.assertEqual(handlers[0].proxies, {})
+        self.assertIsInstance(handlers[2], urllib.request.HTTPSHandler)
+        request = opened.call_args.args[0]
+        self.assertEqual(request.full_url, pairing["server"] + "/api/client/bootstrap/installer/0.3.0")
+        self.assertEqual(json.loads(request.data), pairing)
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual((root / "Install-Codex-Connector-0.3.0.sh").read_bytes(), installer)
+        for code in (301, 302, 303, 307, 308):
+            for target in ("http://127.0.0.1/untrusted.sh", "https://elsewhere.invalid/untrusted.sh"):
+                with self.subTest(code=code, target=target), self.assertRaisesRegex(SystemExit, "Nothing was installed"):
+                    handlers[1].redirect_request(request, None, code, "Moved", {}, target)
 
     async def test_bootstrap_reads_a_fragmented_pairing_body_before_validating(self):
         _, installer = self.publish_release()

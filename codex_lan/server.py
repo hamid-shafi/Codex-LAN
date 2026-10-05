@@ -44,6 +44,8 @@ from .usage_estimator import supports_fast
 
 
 MAX_IMAGE = MAX_USER_FILE_BYTES
+MAX_PARALLEL_UPLOADS = 8
+MAX_DEVICE_UPLOADS = 4
 ATTACHMENT_GC_AGE_SECONDS = 7 * 24 * 60 * 60
 ATTACHMENT_ORPHAN_GRACE_SECONDS = 60 * 60
 ATTACHMENT_GC_INTERVAL_SECONDS = 60 * 60
@@ -202,6 +204,8 @@ class Service:
         self.backend_update_marker = self.data_dir / "backend-update.maintenance"
         self.upload_dir = Path(data_dir) / "uploads"
         self.upload_dir.mkdir(mode=0o700, exist_ok=True)
+        self.active_uploads = 0
+        self.device_uploads = {}
         self.enrollments = []
         self.connecting = set()
         self.remote_sessions = {}
@@ -340,8 +344,9 @@ class Service:
         self.enrollments = [stamp for stamp in self.enrollments if now - stamp < 60]
         if len(self.enrollments) >= 20:
             raise web.HTTPTooManyRequests(text="Too many enrollment attempts. Try again in a minute.")
-        data = await body(request)
+        # Reserve the attempt before reading: concurrent/invalid bodies cannot bypass the cap.
         self.enrollments.append(now)
+        data = await body(request)
         enrolled = self.store.enroll(data.get("name", "Ubuntu client"))
         session_token, lifetime = self.store.create_browser_session(enrolled["device"]["id"], remember=True)
         response = web.json_response(enrolled, status=201)
@@ -684,29 +689,68 @@ class Service:
 
     async def upload(self, request):
         device_id = request[DEVICE]["id"]
-        reader = await request.multipart()
-        part = await reader.next()
-        if part is None or part.name != "file":
-            raise ValueError("Upload a file in the file field")
-        name = attachment_name(part.filename)
-        data = bytearray()
-        while chunk := await part.read_chunk(65536):
-            data.extend(chunk)
-            if len(data) > MAX_IMAGE:
-                raise ValueError("Each file must be no larger than 25 MiB")
-        mime = attachment_mime(data)
-        path = self.upload_dir / uuid.uuid4().hex
-        def save_upload():
-            with path.open("xb") as target:
-                os.chmod(path, 0o600)
-                target.write(data)
-        await asyncio.to_thread(save_upload)
+        # CODEX: Reserve without awaiting; reject excess uploads before allocating their bodies.
+        if (self.active_uploads >= MAX_PARALLEL_UPLOADS
+                or self.device_uploads.get(device_id, 0) >= MAX_DEVICE_UPLOADS):
+            raise web.HTTPTooManyRequests(
+                text="Too many file uploads are in progress. Retry shortly.",
+                headers={"Retry-After": "2"},
+            )
+        self.active_uploads += 1
+        self.device_uploads[device_id] = self.device_uploads.get(device_id, 0) + 1
+        path, writer, committed = None, None, False
+
+        def release_slot():
+            self.active_uploads -= 1
+            remaining = self.device_uploads[device_id] - 1
+            if remaining:
+                self.device_uploads[device_id] = remaining
+            else:
+                self.device_uploads.pop(device_id, None)
+
+        def cleanup_file():
+            if path is not None and not committed:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    LOGGER.exception("rejected_upload_cleanup_failed")
+
         try:
+            reader = await request.multipart()
+            part = await reader.next()
+            if part is None or part.name != "file":
+                raise ValueError("Upload a file in the file field")
+            name = attachment_name(part.filename)
+            data = bytearray()
+            while chunk := await part.read_chunk(65536):
+                data.extend(chunk)
+                if len(data) > MAX_IMAGE:
+                    raise ValueError("Each file must be no larger than 25 MiB")
+            mime = attachment_mime(data)
+            path = self.upload_dir / uuid.uuid4().hex
+
+            def save_upload():
+                with path.open("xb") as target:
+                    os.chmod(path, 0o600)
+                    target.write(data)
+
+            writer = asyncio.create_task(asyncio.to_thread(save_upload))
+            # CODEX: Cancellation must not drop the reservation while its disk writer still owns the body.
+            await asyncio.shield(writer)
             attachment = self.store.add_attachment(device_id, name, mime, len(data), str(path))
-        except Exception:
-            path.unlink(missing_ok=True)
-            raise
-        return web.json_response(self.attachment(attachment), status=201)
+            committed = True
+            return web.json_response(self.attachment(attachment), status=201)
+        finally:
+            if writer is not None and not writer.done():
+                def finish_cancelled_upload(done):
+                    if not done.cancelled():
+                        done.exception()
+                    cleanup_file()
+                    release_slot()
+                writer.add_done_callback(finish_cancelled_upload)
+            else:
+                cleanup_file()
+                release_slot()
 
     async def download(self, request):
         attachment = self.store.get_attachment(request[DEVICE]["id"], request.match_info["attachment"])

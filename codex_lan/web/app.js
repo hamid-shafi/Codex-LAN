@@ -1960,7 +1960,8 @@ function safeLink(raw, attachmentsOnly = false) {
 
 function inlineMarkdown(parent, text) {
   const mathPattern = window.CodexMath?.pattern || "(?!)";
-  const pattern = new RegExp(String.raw`(\x60[^\x60\n]+\x60|${mathPattern}|\*\*[^*]+\*\*|__[^_]+__|\[[^\]\n]+\]\([^\s)]+\)|https?:\/\/[^\s<>]+|\*[^*\n]+\*)`, "g");
+  // CODEX: A new opening bracket ends a link label so unmatched input cannot retry the whole remaining text at every bracket.
+  const pattern = new RegExp(String.raw`(\x60[^\x60\n]+\x60|${mathPattern}|\*\*[^*]+\*\*|__[^_]+__|\[[^\[\]\n]+\]\([^\s)]+\)|https?:\/\/[^\s<>]+|\*[^*\n]+\*)`, "g");
   let offset = 0;
   for (const match of text.matchAll(pattern)) {
     if (match.index > offset) parent.append(document.createTextNode(text.slice(offset, match.index)));
@@ -1988,8 +1989,15 @@ function tableCells(line) { return line.trim().replace(/^\|/, "").replace(/\|$/,
 function tableDivider(line) { return !!line && line.includes("|") && tableCells(line).every((cell) => /^:?-{3,}:?$/.test(cell)); }
 function blockStart(lines, i) { return /^\s{0,3}(#{1,6}\s|```|~~~|>\s?|[-+*]\s+|\d+[.)]\s+|([-*_])(?:\s*\2){2,}\s*$)/.test(lines[i]) || tableDivider(lines[i + 1]) || !!window.CodexMath?.displayBlock(lines, i); }
 
-function markdown(text) {
+function markdown(text, depth = 0) {
   const fragment = document.createDocumentFragment();
+  // CODEX: Untrusted nested quotes must not overflow the browser stack; keep the remaining source visible as inert text.
+  if (depth >= 16) {
+    const content = String(text || "");
+    const node = element("p", "", content); node.dir = direction(content);
+    fragment.append(node);
+    return fragment;
+  }
   const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
   let i = 0;
   while (i < lines.length) {
@@ -2033,7 +2041,7 @@ function markdown(text) {
     if (/^\s{0,3}>/.test(lines[i])) {
       const quote = [];
       while (i < lines.length && /^\s{0,3}>/.test(lines[i])) quote.push(lines[i++].replace(/^\s{0,3}>\s?/, ""));
-      const node = element("blockquote"); node.dir = direction(quote.join("\n")); node.append(markdown(quote.join("\n"))); fragment.append(node); continue;
+      const node = element("blockquote"); node.dir = direction(quote.join("\n")); node.append(markdown(quote.join("\n"), depth + 1)); fragment.append(node); continue;
     }
     const list = lines[i].match(/^\s{0,3}([-+*]|\d+[.)])\s+(.+)$/);
     if (list) {

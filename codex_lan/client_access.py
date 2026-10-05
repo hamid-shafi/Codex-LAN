@@ -219,10 +219,18 @@ request = urllib.request.Request(
     method="POST",
 )
 context = ssl.create_default_context(cafile=str(ca_path))
+# CODEX: Keep the private pairing request pinned to this HTTPS server, not ambient proxies or redirects.
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        raise SystemExit("The server redirected the private setup download. Nothing was installed.")
+
+opener = urllib.request.build_opener(
+    urllib.request.ProxyHandler({{}}), NoRedirect(), urllib.request.HTTPSHandler(context=context),
+)
 installer_path = root / ("Install-Codex-Connector-" + version + ".sh")
 maximum = 320 * 1024 * 1024
 try:
-    with urllib.request.urlopen(request, context=context, timeout=45) as response, installer_path.open("wb") as output:
+    with opener.open(request, timeout=45) as response, installer_path.open("wb") as output:
         length = response.headers.get("Content-Length")
         if length and int(length) > maximum:
             raise SystemExit("Connector package is unexpectedly large.")

@@ -1,6 +1,7 @@
 """CODEX: Exercise publication barriers and private diagnostic redaction with synthetic state."""
 
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 
 from tools import check_publication as publication
 from tools import private_snapshot
@@ -33,10 +35,55 @@ class PublicationTests(unittest.TestCase):
             "private-reports/report.html", "state/auth.json", "codex-pairing-0.3.13.json",
             "Install-Codex-Connector-0.3.13-private.sh", ".env", "server.sqlite3-wal",
             ".local/share/state.txt", "pip.pyz",
+            "support.zip", "snapshot.tar.gz", "history.gz", "export.7z",
         ):
             with self.subTest(path=path):
                 self.assertTrue(publication.private_path(path))
         self.assertFalse(publication.private_path(".env.example"))
+
+    def test_compressed_credentials_are_blocked_even_with_a_source_filename(self):
+        archive = io.BytesIO()
+        value = "-".join(("SYNTHETIC", "LOCAL", "CREDENTIAL"))
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+            bundle.writestr("auth.json", json.dumps({"access_token": value}))
+        for prefix in (b"", b"# Synthetic archive note\n"):
+            for name in ("support.zip", "support.txt"):
+                with self.subTest(name=name, prefixed=bool(prefix)):
+                    findings = publication.inspect_bytes(name, prefix + archive.getvalue())
+                    self.assertIn("opaque-archive", {item.category for item in findings})
+                    self.assertNotIn(value, json.dumps([publication.asdict(item) for item in findings]))
+
+    def test_compressed_source_cannot_be_exported_or_hidden_in_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "source"
+            root.mkdir()
+            self.git(root, "init", "-q")
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                bundle.writestr("server.sqlite3", b"synthetic private database")
+            (root / "notes.txt").write_bytes(b"# Synthetic archive note\n" + archive.getvalue())
+            paths = publication.source_files(root)
+            with self.assertRaises(RuntimeError):
+                publication.export_source(root, paths, Path(directory) / "public")
+            self.assertFalse((Path(directory) / "public").exists())
+            self.git(root, "add", "notes.txt")
+            self.git(root, "commit", "-qm", "Synthetic archive fixture")
+            (root / "notes.txt").unlink()
+            self.git(root, "add", "-u")
+            self.git(root, "commit", "-qm", "Remove fixture")
+            findings, _ = publication.inspect_history(root)
+            self.assertIn("opaque-archive", {item.category for item in findings})
+
+    def test_known_compressed_formats_are_blocked_but_bundled_fonts_are_not(self):
+        for signature in publication.ARCHIVE_SIGNATURES:
+            with self.subTest(signature=signature):
+                findings = publication.inspect_bytes("payload.txt", signature + b"synthetic")
+                self.assertIn("opaque-archive", {item.category for item in findings})
+        for signature in (b"ustar\x00", b"ustar "):
+            self.assertIn("opaque-archive", {item.category for item in publication.inspect_bytes(
+                "payload.txt", b"\x00" * 257 + signature,
+            )})
+        self.assertEqual(publication.inspect_bytes("font.woff2", b"wOF2synthetic font"), [])
 
     def git(self, root, *args):
         environment = {
