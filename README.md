@@ -60,6 +60,20 @@ setup UI. Locking the screen may remain enabled; suspending the host stops acces
 Reported token usage and account-percentage estimates are different measurements.
 Missing usage is not counted as zero, and estimates are not official billing data.
 
+### Context and compaction
+
+New and resumed turns use a bounded 96,000-token budget for **new content after
+the retained prefix**, with a 12,000-token tool-output budget. This balances
+context growth against repeated compaction pauses; Codex's own model-window
+limit remains authoritative. Raising the previous 64,000-token budget can reduce
+compaction frequency, but can also increase input tokens in individual model
+requests. It does not promise lower usage or a fixed compaction duration.
+
+Normal turns send the current message and attachments, not a second copy of the
+visible room history or the Prepared context display. Recorded historical limits
+remain unchanged. See [OpenAI's compaction guide](https://developers.openai.com/api/docs/guides/compaction)
+for the underlying context-management mechanism.
+
 ## Private state stays off GitHub
 
 Installed runtime state lives under `~/.local/share/codex-lan/`: databases, uploads,

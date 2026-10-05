@@ -497,7 +497,7 @@ class LanServerTests(unittest.IsolatedAsyncioTestCase):
         turns = [call for call in worker.calls if call["method"] == "turn/start"]
         starts = [call for call in worker.calls if call["method"] == "thread/start"]
         self.assertEqual(starts[0]["params"]["config"], {
-            "model_auto_compact_token_limit": 64_000,
+            "model_auto_compact_token_limit": 96_000,
             "model_auto_compact_token_limit_scope": "body_after_prefix",
             "tool_output_token_limit": 12_000,
         })
@@ -604,7 +604,7 @@ class LanServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(resumes[0]["params"]["threadId"], worker.thread)
         self.assertIs(resumes[0]["params"]["excludeTurns"], True)
         self.assertEqual(resumes[0]["params"]["config"], {
-            "model_auto_compact_token_limit": 64_000,
+            "model_auto_compact_token_limit": 96_000,
             "model_auto_compact_token_limit_scope": "body_after_prefix",
             "tool_output_token_limit": 12_000,
         })

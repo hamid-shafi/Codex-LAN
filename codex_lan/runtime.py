@@ -38,10 +38,11 @@ FULL_ACCESS_CONTINUATION = (
     "Continue the current task with Read only disabled. Changes are allowed when "
     "needed to complete the task."
 )
-# CODEX: Count new window content; a retained prefix can already exceed 64k after compaction.
-# CODEX: Codex still enforces the model's full context-window limit independently.
+# Count new window content rather than the retained prefix. A 96k budget can
+# reduce repeated compactions without removing the app's context bound.
+# Codex still enforces the model's full context-window limit independently.
 THREAD_CONTEXT_CONFIG = {
-    "model_auto_compact_token_limit": 64_000,
+    "model_auto_compact_token_limit": 96_000,
     "model_auto_compact_token_limit_scope": "body_after_prefix",
     "tool_output_token_limit": 12_000,
 }

@@ -21,6 +21,7 @@ from codex_lan.runtime import (
     MAX_CONTEXT_INSTRUCTION_FILES,
     Peer,
     Runtime,
+    THREAD_CONTEXT_CONFIG,
     _instruction_content_blocks,
     _new_context_overview,
     _safe_context_overview,
@@ -60,6 +61,27 @@ class PreparedContextWorker(fixture.FakeWorker):
 
 
 class PreparedContextShapeTests(unittest.TestCase):
+    def test_context_budget_counts_new_body_and_keeps_native_window_authoritative(self):
+        self.assertEqual(THREAD_CONTEXT_CONFIG, {
+            "model_auto_compact_token_limit": 96_000,
+            "model_auto_compact_token_limit_scope": "body_after_prefix",
+            "tool_output_token_limit": 12_000,
+        })
+        for thread_id in (None, "existing-thread"):
+            with self.subTest(resumed=bool(thread_id)):
+                overview = _new_context_overview(
+                    {"model": "sol", "effort": "max", "speed": "standard"},
+                    {"cwd": "/home/project", "thread_id": thread_id},
+                    "continue",
+                    [],
+                    "message",
+                )
+                self.assertEqual(_safe_context_overview(overview)["limits"], {
+                    "new_context_tokens": 96_000,
+                    "scope": "body_after_prefix",
+                    "tool_output_tokens": 12_000,
+                })
+
     def test_new_and_resumed_overviews_expose_bounded_redacted_turn_input(self):
         secret_prompt = "Review the selected code\napi_key=sk-proj-super-secret-value"
         run = {
@@ -215,9 +237,9 @@ class PreparedContextShapeTests(unittest.TestCase):
             [],
             "message",
         )
-        overview["limits"].update(new_context_tokens=48_000, tool_output_tokens=8_000)
+        overview["limits"].update(new_context_tokens=64_000, tool_output_tokens=8_000)
         safe = _safe_context_overview(overview)
-        self.assertEqual(safe["limits"]["new_context_tokens"], 48_000)
+        self.assertEqual(safe["limits"]["new_context_tokens"], 64_000)
         self.assertEqual(safe["limits"]["tool_output_tokens"], 8_000)
         for invalid in (0, -1, MAX_CONTEXT_LIMIT_TOKENS + 1):
             with self.subTest(invalid=invalid):
@@ -278,6 +300,11 @@ class LanPreparedContextHTTPTests(unittest.IsolatedAsyncioTestCase):
         run_id = created["run"]["id"]
         live = self.service.runtime.runs[run_id]
         await self.until(lambda: live.context_overview["instructions"]["count"] == 3)
+        start = next(call for call in worker.calls if call["method"] == "thread/start")
+        turn = next(call for call in worker.calls if call["method"] == "turn/start")
+        self.assertEqual(turn["params"]["input"], [{"type": "text", "text": current_prompt}])
+        self.assertEqual(live.context_overview["limits"]["new_context_tokens"],
+                         start["params"]["config"]["model_auto_compact_token_limit"])
 
         compacted = {
             "id": "compact-one",
@@ -475,6 +502,8 @@ class LanPreparedContextHTTPTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(worker.thread, json.dumps(overview))
         resume = next(call for call in worker.calls if call["method"] == "thread/resume")
         self.assertIs(resume["params"]["excludeTurns"], True)
+        self.assertEqual(overview["limits"]["new_context_tokens"],
+                         resume["params"]["config"]["model_auto_compact_token_limit"])
         total = {
             "inputTokens": 1_300,
             "cachedInputTokens": 250,
