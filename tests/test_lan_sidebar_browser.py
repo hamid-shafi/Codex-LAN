@@ -24,7 +24,7 @@ class LanSidebarBrowserTests(unittest.IsolatedAsyncioTestCase):
         toggle = page.locator("#sidebar-toggle")
         await expect(toggle).to_be_visible()
         await expect(toggle).to_have_attribute("aria-expanded", "true")
-        await page.locator("#message-input").fill("Keep this draft فارسی")
+        await page.locator("#message-input").fill("Keep this draft \u0641\u0627\u0631\u0633\u06cc")
         await page.evaluate("""() => {
             const input = document.getElementById('message-input'); input.setSelectionRange(4, 9);
             const scroll = document.getElementById('timeline-scroll'); scroll.scrollTop = 100;
@@ -42,14 +42,14 @@ class LanSidebarBrowserTests(unittest.IsolatedAsyncioTestCase):
         await page.wait_for_function("() => !state.sidebarTransition")
         await expect(page.locator("#sidebar")).to_have_attribute("inert", "")
         await expect(page.locator("#message-input")).to_be_focused()
-        await expect(page.locator("#message-input")).to_have_value("Keep this draft فارسی")
+        await expect(page.locator("#message-input")).to_have_value("Keep this draft \u0641\u0627\u0631\u0633\u06cc")
         self.assertEqual(await page.locator("#message-input").evaluate("el => [el.selectionStart, el.selectionEnd]"), [4, 9])
         self.assertTrue(await page.evaluate("document.getElementById('timeline')===window.sidebarTimeline && document.getElementById('timeline').firstChild===window.sidebarFirstMessage && state.selected===window.sidebarActiveRoom"))
         self.assertLess(abs(await page.evaluate("window.sidebarAnchor.getBoundingClientRect().top-document.getElementById('timeline-scroll').getBoundingClientRect().top-window.sidebarAnchorOffset")), 4)
         self.assertFalse(await page.evaluate("state.follow"))
         await page.reload()
         await expect(page.locator("#room-title")).to_have_text("Working together")
-        await expect(page.locator("#message-input")).to_have_value("Keep this draft فارسی")
+        await expect(page.locator("#message-input")).to_have_value("Keep this draft \u0641\u0627\u0631\u0633\u06cc")
         await expect(toggle).to_have_attribute("aria-expanded", "false")
         await expect(page.locator("#sidebar")).to_have_attribute("aria-hidden", "true")
         await toggle.focus()
@@ -87,10 +87,10 @@ class LanSidebarBrowserTests(unittest.IsolatedAsyncioTestCase):
         await page.reload()
         await expect(page.locator("#message-input")).to_have_value("")
 
-        await page.locator("#message-input").fill("Primary room survives reload فارسی")
+        await page.locator("#message-input").fill("Primary room survives reload \u0641\u0627\u0631\u0633\u06cc")
         self.assertEqual(
             await page.evaluate("key => localStorage.getItem(key)", primary_key),
-            "Primary room survives reload فارسی",
+            "Primary room survives reload \u0641\u0627\u0631\u0633\u06cc",
         )
         await page.locator("#room-list .room-item").filter(
             has_text="Disposable drafted room"
@@ -111,7 +111,7 @@ class LanSidebarBrowserTests(unittest.IsolatedAsyncioTestCase):
             has_text="Working together"
         ).click()
         await expect(page.locator("#message-input")).to_have_value(
-            "Primary room survives reload فارسی"
+            "Primary room survives reload \u0641\u0627\u0631\u0633\u06cc"
         )
 
         disposable_row = page.locator(
@@ -126,7 +126,7 @@ class LanSidebarBrowserTests(unittest.IsolatedAsyncioTestCase):
             await page.evaluate("key => localStorage.getItem(key)", disposable_key)
         )
         await expect(page.locator("#message-input")).to_have_value(
-            "Primary room survives reload فارسی"
+            "Primary room survives reload \u0641\u0627\u0631\u0633\u06cc"
         )
 
         await page.get_by_role("button", name="Send message", exact=True).click()

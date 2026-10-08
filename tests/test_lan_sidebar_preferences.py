@@ -236,7 +236,7 @@ class SidebarPreferenceTests(unittest.IsolatedAsyncioTestCase):
         await self.page.locator("#new-room").click()
         await expect(self.page.locator("#room-title")).to_have_text("New chat")
         room_id = await self.page.evaluate("state.selected")
-        title = "بررسی مشکل اتصال مکرر سرویس"
+        title = '\u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633'
         await self.page.locator("#message-input").fill(title)
         await self.page.locator("#message-input").press("Enter")
         await self.page.locator("#message-input").press("Enter")

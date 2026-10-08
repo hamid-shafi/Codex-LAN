@@ -75,7 +75,7 @@ class LanEnterModeTests(unittest.IsolatedAsyncioTestCase):
     async def test_ime_and_repeat_do_not_send_ctrl_enter_still_does(self):
         input = await self.start_chat()
         await self.page.get_by_role("checkbox", name="Double Enter to send").uncheck()
-        await input.fill("Composing فارسی")
+        await input.fill("Composing \u0641\u0627\u0631\u0633\u06cc")
         await self.page.evaluate("""() => {
           const input=document.getElementById('message-input');
           for (const properties of [{isComposing:true}, {keyCode:229}, {repeat:true}]) {
@@ -83,10 +83,10 @@ class LanEnterModeTests(unittest.IsolatedAsyncioTestCase):
           }
         }""")
         self.assertIsNone(self.worker.turn)
-        await expect(input).to_have_value("Composing فارسی")
+        await expect(input).to_have_value("Composing \u0641\u0627\u0631\u0633\u06cc")
         await input.press("Control+Enter")
         await self.wait_worker_turn()
-        self.assertEqual(self.submitted_text(), "Composing فارسی")
+        self.assertEqual(self.submitted_text(), "Composing \u0641\u0627\u0631\u0633\u06cc")
         self.assertFalse(self.errors, self.errors)
 
     async def test_mode_room_and_edit_changes_clear_pending_enter(self):

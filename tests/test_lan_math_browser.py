@@ -26,7 +26,7 @@ class MathBrowserTests(unittest.IsolatedAsyncioTestCase):
         return self.page.locator("#math-fixture")
 
     async def test_persian_inline_and_display_math_are_native_and_not_duplicated(self):
-        source = r"ترتیب را بررسی کنیم: \(a_1\le a_2\) و سپس:" + "\n\n" + r"\[ a_1\le a_2\le\dots a_n \]"
+        source = "\u062a\u0631\u062a\u06cc\u0628 \u0631\u0627 \u0628\u0631\u0631\u0633\u06cc \u06a9\u0646\u06cc\u0645: \\(a_1\\le a_2\\) \u0648 \u0633\u067e\u0633:" + "\n\n" + r"\[ a_1\le a_2\le\dots a_n \]"
         root = await self.render(source)
         await expect(root.locator("math")).to_have_count(2)
         await expect(root.locator("p").first).to_have_attribute("dir", "rtl")
@@ -41,13 +41,13 @@ class MathBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.screenshot(path="/tmp/codex-math-persian.png", full_page=True)
 
     async def test_multiline_display_blank_lines_and_dollar_math(self):
-        source = "پیش از فرمول\n" + r"\[" + "\n" + r"\frac{a_1}{a_2}" + "\n\n" + r"+ \sqrt{x^2}" + "\n" + r"\]" + "\nبعد از فرمول\n\n$$x^2+y^2=z^2$$\n\nInline $x_1+2$ works."
+        source = "\u067e\u06cc\u0634 \u0627\u0632 \u0641\u0631\u0645\u0648\u0644\n" + r"\[" + "\n" + r"\frac{a_1}{a_2}" + "\n\n" + r"+ \sqrt{x^2}" + "\n" + r"\]" + "\n\u0628\u0639\u062f \u0627\u0632 \u0641\u0631\u0645\u0648\u0644\n\n$$x^2+y^2=z^2$$\n\nInline $x_1+2$ works."
         root = await self.render(source)
         await expect(root.locator(".math-display")).to_have_count(2)
         await expect(root.locator(".math-inline")).to_have_count(1)
         await expect(root.locator("mfrac")).to_have_count(1)
         await expect(root.locator("msqrt")).to_have_count(1)
-        self.assertIn("بعد از فرمول", await root.inner_text())
+        self.assertIn("\u0628\u0639\u062f \u0627\u0632 \u0641\u0631\u0645\u0648\u0644", await root.inner_text())
 
     async def test_fenced_inline_code_currency_and_escaped_delimiters_stay_literal(self):
         source = "```latex\n\\[x_1\\]\n$$y^2$$\n```\n\n`\\(z_1\\)` and `$x_1$`\n\nPrices are $5 and $10. Pay $20 tomorrow.\n\nEscaped \\$x$ stays text."
@@ -81,7 +81,7 @@ class MathBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.errors)
 
     async def test_rendering_does_not_modify_message_source_or_copy_payload(self):
-        source = r"فرمول: \(a_1\le a_2\)"
+        source = "\u0641\u0631\u0645\u0648\u0644: \\(a_1\\le a_2\\)"
         result = await self.page.evaluate("""source => {
             const message = {content: source}; const original = message.content;
             document.querySelector('#math-fixture').replaceChildren(markdown(message.content));
@@ -100,7 +100,7 @@ class MathBrowserTests(unittest.IsolatedAsyncioTestCase):
             root.style.padding = '20px'; root.style.margin = '24px';
             root.style.background = 'var(--panel)'; root.style.borderRadius = '16px';
         }""")
-        source = r"رابطهٔ مرتب بودن: \(a_1\le a_2\le\dots a_n\)" + "\n\n" + r"\[\frac{a_1+a_2}{2}\le a_n\]"
+        source = "\u0631\u0627\u0628\u0637\u0647\u0654 \u0645\u0631\u062a\u0628 \u0628\u0648\u062f\u0646: \\(a_1\\le a_2\\le\\dots a_n\\)" + "\n\n" + r"\[\frac{a_1+a_2}{2}\le a_n\]"
         root = await self.render(source)
         selection = await root.evaluate("""node => {
             const range = document.createRange(); range.selectNodeContents(node);

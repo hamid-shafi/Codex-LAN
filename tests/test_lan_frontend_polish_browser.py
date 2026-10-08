@@ -222,7 +222,7 @@ class LanFrontendPolishBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def test_header_and_composer_do_not_overflow_compact_breakpoints(self):
         await self.login(self.admin)
         await self.page.locator("#message-input").fill(
-            "Responsive composer draft فارسی with English details"
+            "Responsive composer draft \u0641\u0627\u0631\u0633\u06cc with English details"
         )
 
         for width in (360, 400, 768):
@@ -359,7 +359,7 @@ class LanFrontendPolishBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.login(self.admin)
         dialog = self.page.locator("#quick-switcher")
         search = self.page.locator("#quick-switcher-input")
-        for key, modifier in (("ن", "ctrlKey"), ("ن", "metaKey"), ("ל", "ctrlKey")):
+        for key, modifier in (("\u0646", "ctrlKey"), ("\u0646", "metaKey"), ("ל", "ctrlKey")):
             with self.subTest(key=key, modifier=modifier):
                 prevented = await self.page.evaluate(
                     """({key, modifier}) => {
@@ -384,12 +384,12 @@ class LanFrontendPolishBrowserTests(unittest.IsolatedAsyncioTestCase):
         dialog = self.page.locator("#quick-switcher")
         cases = (
             {"key": "k", "code": "KeyX", "ctrlKey": True},
-            {"key": "ن", "code": "KeyK"},
-            {"key": "ن", "code": "KeyK", "ctrlKey": True, "altKey": True},
-            {"key": "ن", "code": "KeyK", "ctrlKey": True, "shiftKey": True},
-            {"key": "ن", "code": "KeyK", "ctrlKey": True, "isComposing": True},
-            {"key": "ن", "code": "KeyK", "ctrlKey": True, "repeat": True},
-            {"key": "ن", "code": "KeyK", "ctrlKey": True, "alreadyPrevented": True},
+            {"key": "\u0646", "code": "KeyK"},
+            {"key": "\u0646", "code": "KeyK", "ctrlKey": True, "altKey": True},
+            {"key": "\u0646", "code": "KeyK", "ctrlKey": True, "shiftKey": True},
+            {"key": "\u0646", "code": "KeyK", "ctrlKey": True, "isComposing": True},
+            {"key": "\u0646", "code": "KeyK", "ctrlKey": True, "repeat": True},
+            {"key": "\u0646", "code": "KeyK", "ctrlKey": True, "alreadyPrevented": True},
         )
         for options in cases:
             with self.subTest(options=options):

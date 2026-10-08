@@ -110,14 +110,14 @@ class MultiClickSelectionTests(unittest.TestCase):
 
     def test_double_click_uses_layout_coordinates_for_mixed_rtl_and_ltr_words(self) -> None:
         self.window.remove(self.view)
-        self.view = MarkdownView("Deploy این ادامه فارسی است و Spark باید خوانا بماند")
+        self.view = MarkdownView("Deploy \u0627\u06cc\u0646 \u0627\u062f\u0627\u0645\u0647 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a \u0648 Spark \u0628\u0627\u06cc\u062f \u062e\u0648\u0627\u0646\u0627 \u0628\u0645\u0627\u0646\u062f")
         self.window.add(self.view)
         self.window.show_all()
         drain_events()
         self.label = self.view.get_children()[0]
         self.assertIsInstance(self.label, Gtk.Label)
 
-        for word in ("Deploy", "Spark", "باید"):
+        for word in ("Deploy", "Spark", "\u0628\u0627\u06cc\u062f"):
             with self.subTest(word=word):
                 rendered_offset = self.label.get_text().index(word) + len(word) // 2
                 event = self._click_event(

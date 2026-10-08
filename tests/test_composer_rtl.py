@@ -20,10 +20,10 @@ from app import (  # noqa: E402
 
 
 RTL_SAMPLES = {
-    "Persian": "سلام دنیا",
-    "Arabic": "مرحبا بالعالم",
+    "Persian": "\u0633\u0644\u0627\u0645 \u062f\u0646\u06cc\u0627",
+    "Arabic": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645",
     "Hebrew": "שלום עולם",
-    "Urdu": "اردو زبان",
+    "Urdu": "\u0627\u0631\u062f\u0648 \u0632\u0628\u0627\u0646",
     "Syriac": "\u0710\u0712\u0713 \u0715\u0717\u0718",
     "Thaana": "\u0780\u07a6\u0781 \u0782\u07a7\u0783",
     "NKo": "\u07ca\u07cb\u07cc \u07cd\u07ce\u07cf",
@@ -39,7 +39,7 @@ class ComposerDirectionHelperTests(unittest.TestCase):
                 self.assertTrue(composer_paragraph_is_rtl(f"Spark {text}"))
 
     def test_non_ascii_ltr_text_and_neutral_symbols_do_not_flip_direction(self) -> None:
-        for text in ["Café déjà vu", "Ελληνικά", "中文", "日本語", "हिन्दी", "👋 🌍", "١٢٣"]:
+        for text in ["Café déjà vu", "Ελληνικά", "中文", "日本語", "हिन्दी", "👋 🌍", "\u0661\u0662\u0663"]:
             with self.subTest(text=text):
                 self.assertFalse(composer_is_rtl(text))
                 self.assertFalse(composer_paragraph_is_rtl(text))
@@ -178,7 +178,7 @@ class ComposerDirectionTests(unittest.TestCase):
             Gtk.Align.START,
         )
 
-        for character in " این ادامه فارسی است":
+        for character in " \u0627\u06cc\u0646 \u0627\u062f\u0627\u0645\u0647 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a":
             text_buffer.insert(text_buffer.get_end_iter(), character)
         drain_events()
         self.assert_direction(
@@ -204,7 +204,7 @@ class ComposerDirectionTests(unittest.TestCase):
         window.add(composer.input_view)
         window.show_all()
         text_buffer = composer.input_view.get_buffer()
-        draft = "Spark ادامه فارسی\nEnglish continuation"
+        draft = "Spark \u0627\u062f\u0627\u0645\u0647 \u0641\u0627\u0631\u0633\u06cc\nEnglish continuation"
         text_buffer.set_text(draft)
         drain_events()
 
@@ -327,7 +327,7 @@ class ComposerDirectionTests(unittest.TestCase):
     def test_backspace_before_a_generated_line_marker_merges_the_lines(self) -> None:
         composer = ComposerHarness()
         text_buffer = composer.input_view.get_buffer()
-        text_buffer.set_text("first\nسلام")
+        text_buffer.set_text("first\n\u0633\u0644\u0627\u0645")
         drain_events()
         line_start = text_buffer.get_iter_at_line(1)
         cursor = line_start.copy()
@@ -344,7 +344,7 @@ class ComposerDirectionTests(unittest.TestCase):
         )()
         self.assertTrue(composer.on_input_key(composer.input_view, event))
         drain_events()
-        self.assertEqual(composer._input_text(), "firstسلام")
+        self.assertEqual(composer._input_text(), "first\u0633\u0644\u0627\u0645")
 
     @staticmethod
     def _edit(composer: ComposerHarness, text: str) -> None:
@@ -400,7 +400,7 @@ class ComposerDirectionTests(unittest.TestCase):
         control = Gdk.ModifierType.CONTROL_MASK
         text_buffer = composer.input_view.get_buffer()
 
-        self._edit(composer, "سلام")
+        self._edit(composer, "\u0633\u0644\u0627\u0645")
         raw = text_buffer.get_text(
             text_buffer.get_start_iter(), text_buffer.get_end_iter(), True
         )
@@ -408,7 +408,7 @@ class ComposerDirectionTests(unittest.TestCase):
         self._shortcut(composer, Gdk.KEY_z, control)
         self.assertEqual(composer._input_text(), "")
         self._shortcut(composer, Gdk.KEY_y, control)
-        self.assertEqual(composer._input_text(), "سلام")
+        self.assertEqual(composer._input_text(), "\u0633\u0644\u0627\u0645")
         raw = text_buffer.get_text(
             text_buffer.get_start_iter(), text_buffer.get_end_iter(), True
         )

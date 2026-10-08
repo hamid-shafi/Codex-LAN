@@ -66,7 +66,7 @@ def render(theme: str, output: Path, width: int, height: int) -> None:
         "assistant",
         """The interface remains English while mixed-direction content keeps its own reading order.
 
-**RTL regression sample (Persian):** این متن فارسی باید از راست به چپ خوانده شود و `inline_code` جهت خودش را حفظ کند.
+**RTL regression sample (Persian):** \u0627\u06cc\u0646 \u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc \u0628\u0627\u06cc\u062f \u0627\u0632 \u0631\u0627\u0633\u062a \u0628\u0647 \u0686\u067e \u062e\u0648\u0627\u0646\u062f\u0647 \u0634\u0648\u062f \u0648 `inline_code` \u062c\u0647\u062a \u062e\u0648\u062f\u0634 \u0631\u0627 \u062d\u0641\u0638 \u06a9\u0646\u062f.
 
 > Select this passage, then reply to it or open a private side thread.
 
@@ -122,7 +122,7 @@ int main() {
     )
     source.attach_clipboard_image(fixture_pixbuf)
     source.input_view.get_buffer().set_text(
-        "Spark این ادامهٔ فارسی باید در کادر نوشتن راست‌به‌چپ بماند"
+        "Spark \u0627\u06cc\u0646 \u0627\u062f\u0627\u0645\u0647\u0654 \u0641\u0627\u0631\u0633\u06cc \u0628\u0627\u06cc\u062f \u062f\u0631 \u06a9\u0627\u062f\u0631 \u0646\u0648\u0634\u062a\u0646 \u0631\u0627\u0633\u062a\u200c\u0628\u0647\u200c\u0686\u067e \u0628\u0645\u0627\u0646\u062f"
     )
 
     content = source.get_child()

@@ -32,9 +32,9 @@ from markdown_view import (  # noqa: E402
 class DirectionTests(unittest.TestCase):
     def test_unicode_strong_direction_covers_all_supported_rtl_scripts(self) -> None:
         samples = {
-            "Arabic": "مرحبا بالعالم",
+            "Arabic": "\u0645\u0631\u062d\u0628\u0627 \u0628\u0627\u0644\u0639\u0627\u0644\u0645",
             "Hebrew": "שלום עולם",
-            "Urdu": "اردو زبان",
+            "Urdu": "\u0627\u0631\u062f\u0648 \u0632\u0628\u0627\u0646",
             "Syriac": "\u0710\u0712\u0713 \u0715\u0717\u0718",
             "Thaana": "\u0780\u07a6\u0781 \u0782\u07a7\u0783",
             "NKo": "\u07ca\u07cb\u07cc \u07cd\u07ce\u07cf",
@@ -55,11 +55,11 @@ class DirectionTests(unittest.TestCase):
                 self.assertFalse(is_rtl(f"{text} שלום"))
                 self.assertFalse(content_prefers_rtl(f"{text} שלום"))
                 self.assertFalse(MarkdownView(text).message_rtl)
-        self.assertFalse(is_rtl("١٢٣"))
+        self.assertFalse(is_rtl("\u0661\u0662\u0663"))
 
     def test_combining_marks_and_joiners_do_not_add_direction_votes(self) -> None:
         self.assertFalse(content_prefers_rtl("English sentence with שָׁלוֹם as one label"))
-        self.assertFalse(content_prefers_rtl("English sentence with گفت‌وگو as one label"))
+        self.assertFalse(content_prefers_rtl("English sentence with \u06af\u0641\u062a\u200c\u0648\u06af\u0648 as one label"))
         self.assertTrue(content_prefers_rtl("Café שָׁלוֹם עוֹלָם"))
 
     def test_rtl_text_in_code_fences_does_not_change_code_direction(self) -> None:
@@ -72,13 +72,13 @@ class DirectionTests(unittest.TestCase):
         self.assertFalse(view.message_rtl)
 
     def test_first_strong_helper_remains_predictable(self) -> None:
-        self.assertTrue(is_rtl("این Spark است"))
-        self.assertFalse(is_rtl("Spark یک ابزار است"))
-        self.assertTrue(content_prefers_rtl("Spark این ادامهٔ فارسی است"))
+        self.assertTrue(is_rtl("\u0627\u06cc\u0646 Spark \u0627\u0633\u062a"))
+        self.assertFalse(is_rtl("Spark \u06cc\u06a9 \u0627\u0628\u0632\u0627\u0631 \u0627\u0633\u062a"))
+        self.assertTrue(content_prefers_rtl("Spark \u0627\u06cc\u0646 \u0627\u062f\u0627\u0645\u0647\u0654 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a"))
 
     def test_english_prefix_with_persian_continuation_renders_rtl(self) -> None:
         view = MarkdownView(
-            "Spark یک پردازش جداست\n\nexit code 0 یعنی موفق بود"
+            "Spark \u06cc\u06a9 \u067e\u0631\u062f\u0627\u0632\u0634 \u062c\u062f\u0627\u0633\u062a\n\nexit code 0 \u06cc\u0639\u0646\u06cc \u0645\u0648\u0641\u0642 \u0628\u0648\u062f"
         )
         labels = [child for child in view.get_children() if isinstance(child, Gtk.Label)]
         self.assertEqual(len(labels), 2)
@@ -87,11 +87,11 @@ class DirectionTests(unittest.TestCase):
         self.assertTrue(all(not label.get_layout().get_auto_dir() for label in labels))
 
     def test_one_persian_term_does_not_flip_english_prose(self) -> None:
-        text = "This English explanation mentions the فارسی term only once."
+        text = "This English explanation mentions the \u0641\u0627\u0631\u0633\u06cc term only once."
         self.assertFalse(content_prefers_rtl(text))
         self.assertFalse(
             content_prefers_rtl(
-                "This English dialog uses گفت‌وگو as one localized label."
+                "This English dialog uses \u06af\u0641\u062a\u200c\u0648\u06af\u0648 as one localized label."
             )
         )
         view = MarkdownView(text)
@@ -99,7 +99,7 @@ class DirectionTests(unittest.TestCase):
         self.assertEqual(label.get_direction(), Gtk.TextDirection.LTR)
 
     def test_inline_code_and_url_do_not_outvote_persian_prose(self) -> None:
-        text = "`very_long_technical_identifier` این خطا باید بررسی شود https://example.com"
+        text = "`very_long_technical_identifier` \u0627\u06cc\u0646 \u062e\u0637\u0627 \u0628\u0627\u06cc\u062f \u0628\u0631\u0631\u0633\u06cc \u0634\u0648\u062f https://example.com"
         self.assertTrue(content_prefers_rtl(text))
         label = MarkdownView(text).get_children()[0]
         self.assertEqual(label.get_direction(), Gtk.TextDirection.RTL)
@@ -108,7 +108,7 @@ class DirectionTests(unittest.TestCase):
         window = Gtk.Window()
         window.set_default_size(640, 240)
         view = MarkdownView(
-            "این یک بند فارسی با Spark است\n\nاین بند دوم فارسی است"
+            "\u0627\u06cc\u0646 \u06cc\u06a9 \u0628\u0646\u062f \u0641\u0627\u0631\u0633\u06cc \u0628\u0627 Spark \u0627\u0633\u062a\n\n\u0627\u06cc\u0646 \u0628\u0646\u062f \u062f\u0648\u0645 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a"
         )
         window.add(view)
         window.show_all()
@@ -133,14 +133,14 @@ class DirectionTests(unittest.TestCase):
         self.assertEqual(label.get_direction(), Gtk.TextDirection.LTR)
 
     def test_code_fence_does_not_choose_prose_direction(self) -> None:
-        view = MarkdownView("```python\nprint('first')\n```\n\nاین پاسخ فارسی است")
+        view = MarkdownView("```python\nprint('first')\n```\n\n\u0627\u06cc\u0646 \u067e\u0627\u0633\u062e \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a")
         self.assertTrue(view.message_rtl)
 
     def test_mixed_message_does_not_mirror_english_blocks(self) -> None:
         view = MarkdownView(
             "English heading and controls\n\n"
-            "این یک بند کاملاً فارسی است\n\n"
-            "RTL regression sample (Persian): این متن باید خوانا بماند"
+            "\u0627\u06cc\u0646 \u06cc\u06a9 \u0628\u0646\u062f \u06a9\u0627\u0645\u0644\u0627\u064b \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a\n\n"
+            "RTL regression sample (Persian): \u0627\u06cc\u0646 \u0645\u062a\u0646 \u0628\u0627\u06cc\u062f \u062e\u0648\u0627\u0646\u0627 \u0628\u0645\u0627\u0646\u062f"
         )
         labels = [child for child in view.get_children() if isinstance(child, Gtk.Label)]
         self.assertEqual(
@@ -150,7 +150,7 @@ class DirectionTests(unittest.TestCase):
         self.assertEqual(view.get_direction(), Gtk.TextDirection.LTR)
 
     def test_table_keeps_source_order_and_first_strong_cell_direction(self) -> None:
-        view = MarkdownView("| API مقدار | value |\n| --- | --- |\n| one | two |")
+        view = MarkdownView("| API \u0645\u0642\u062f\u0627\u0631 | value |\n| --- | --- |\n| one | two |")
         grid = view.get_children()[0]
         self.assertIsInstance(grid, Gtk.Grid)
         self.assertEqual(grid.get_direction(), Gtk.TextDirection.LTR)
@@ -158,7 +158,7 @@ class DirectionTests(unittest.TestCase):
         self.assertEqual(first_cell.get_direction(), Gtk.TextDirection.LTR)
 
     def test_formatted_technical_tokens_are_isolated_in_rtl(self) -> None:
-        markup = inline_markup("این **Spark Engine** و *exit code 0* است", rtl_context=True)
+        markup = inline_markup("\u0627\u06cc\u0646 **Spark Engine** \u0648 *exit code 0* \u0627\u0633\u062a", rtl_context=True)
         self.assertIn("<b>\u2066Spark Engine\u2069</b>", markup)
         self.assertIn("<i>\u2066exit code 0\u2069</i>", markup)
 
@@ -257,12 +257,12 @@ class InlineMarkdownTests(unittest.TestCase):
     def test_autolink_and_bare_url_keep_sentence_punctuation_outside(self) -> None:
         explicit = inline_markup("<https://example.com/path>")
         self.assertIn('<a href="https://example.com/path">', explicit)
-        bare = inline_markup("ببین https://example.com/a_(b).", rtl_context=True)
+        bare = inline_markup("\u0628\u0628\u06cc\u0646 https://example.com/a_(b).", rtl_context=True)
         self.assertIn('href="https://example.com/a_(b)"', bare)
         self.assertNotIn(".</a>", bare)
 
     def test_remote_image_is_not_loaded_as_an_image(self) -> None:
-        markup = inline_markup("![نمودار](https://example.com/chart.png)")
+        markup = inline_markup("![\u0646\u0645\u0648\u062f\u0627\u0631](https://example.com/chart.png)")
         self.assertIn("Image:", markup)
         self.assertIn("<a href=", markup)
         self.assertNotIn("<img", markup)
@@ -307,8 +307,8 @@ class BlockParsingTests(unittest.TestCase):
 
     def test_table_supports_escaped_and_code_span_pipes(self) -> None:
         source = (
-            "| نام | نمونه |\n| --- | --- |\n"
-            "| API | مقدار \\| دیگر |\n| code | `a|b` |"
+            "| \u0646\u0627\u0645 | \u0646\u0645\u0648\u0646\u0647 |\n| --- | --- |\n"
+            "| API | \u0645\u0642\u062f\u0627\u0631 \\| \u062f\u06cc\u06af\u0631 |\n| code | `a|b` |"
         )
         blocks = split_blocks(source)
         self.assertEqual(len(blocks), 1)
@@ -325,22 +325,22 @@ class BlockParsingTests(unittest.TestCase):
 
     def test_headings_lists_quotes_and_rules_render_without_html(self) -> None:
         source = (
-            "# عنوان <unsafe>\n\n- [x] انجام شد\n  - زیرمورد"
-            "\n\n> خط اول\n> خط دوم\n\n---"
+            "# \u0639\u0646\u0648\u0627\u0646 <unsafe>\n\n- [x] \u0627\u0646\u062c\u0627\u0645 \u0634\u062f\n  - \u0632\u06cc\u0631\u0645\u0648\u0631\u062f"
+            "\n\n> \u062e\u0637 \u0627\u0648\u0644\n> \u062e\u0637 \u062f\u0648\u0645\n\n---"
         )
         view = MarkdownView(source)
         labels = [widget for widget in view.get_children() if isinstance(widget, Gtk.Label)]
         self.assertGreaterEqual(len(labels), 4)
         self.assertTrue(any("☑" in label.get_text() for label in labels))
-        self.assertTrue(any("خط اول\nخط دوم" == label.get_text() for label in labels))
+        self.assertTrue(any("\u062e\u0637 \u0627\u0648\u0644\n\u062e\u0637 \u062f\u0648\u0645" == label.get_text() for label in labels))
         self.assertTrue(any(isinstance(widget, Gtk.Separator) for widget in view.get_children()))
 
     def test_heading_preserves_programming_language_hash(self) -> None:
-        view = MarkdownView("# آموزش C#\n\n## بخش دوم ##")
+        view = MarkdownView("# \u0622\u0645\u0648\u0632\u0634 C#\n\n## \u0628\u062e\u0634 \u062f\u0648\u0645 ##")
         labels = view.get_children()
         heading = labels[0].get_text().replace("\u2066", "").replace("\u2069", "")
-        self.assertEqual(heading, "آموزش C#")
-        self.assertEqual(labels[1].get_text(), "بخش دوم")
+        self.assertEqual(heading, "\u0622\u0645\u0648\u0632\u0634 C#")
+        self.assertEqual(labels[1].get_text(), "\u0628\u062e\u0634 \u062f\u0648\u0645")
 
 
 class WidgetRobustnessTests(unittest.TestCase):
@@ -381,7 +381,7 @@ class WidgetRobustnessTests(unittest.TestCase):
         return view, outer, header, code_view
 
     def test_code_buffer_contains_pristine_source_without_direction_marks(self) -> None:
-        code = "سلام = value\nprint(سلام)"
+        code = "\u0633\u0644\u0627\u0645 = value\nprint(\u0633\u0644\u0627\u0645)"
         _view, _outer, _header, code_view = self._code_widgets(
             f"```python\n{code}\n```"
         )
@@ -509,19 +509,19 @@ class WidgetRobustnessTests(unittest.TestCase):
         )
 
     def test_streaming_reuses_stable_completed_paragraph_widgets(self) -> None:
-        view = MarkdownView("پاراگراف پایدار\n\nقسمت")
+        view = MarkdownView("\u067e\u0627\u0631\u0627\u06af\u0631\u0627\u0641 \u067e\u0627\u06cc\u062f\u0627\u0631\n\n\u0642\u0633\u0645\u062a")
         first, old_tail = view.get_children()
-        view.set_text("پاراگراف پایدار\n\nقسمت در حال تکمیل")
+        view.set_text("\u067e\u0627\u0631\u0627\u06af\u0631\u0627\u0641 \u067e\u0627\u06cc\u062f\u0627\u0631\n\n\u0642\u0633\u0645\u062a \u062f\u0631 \u062d\u0627\u0644 \u062a\u06a9\u0645\u06cc\u0644")
         self.assertIs(view.get_children()[0], first)
         self.assertIsNot(view.get_children()[1], old_tail)
 
         completed_tail = view.get_children()[1]
-        view.set_text("پاراگراف پایدار\n\nقسمت در حال تکمیل\n\nآخر")
+        view.set_text("\u067e\u0627\u0631\u0627\u06af\u0631\u0627\u0641 \u067e\u0627\u06cc\u062f\u0627\u0631\n\n\u0642\u0633\u0645\u062a \u062f\u0631 \u062d\u0627\u0644 \u062a\u06a9\u0645\u06cc\u0644\n\n\u0622\u062e\u0631")
         self.assertIs(view.get_children()[0], first)
         self.assertIsNot(view.get_children()[1], completed_tail)
         promoted = view.get_children()[1]
         view.set_text(
-            "پاراگراف پایدار\n\nقسمت در حال تکمیل\n\nآخرین متن"
+            "\u067e\u0627\u0631\u0627\u06af\u0631\u0627\u0641 \u067e\u0627\u06cc\u062f\u0627\u0631\n\n\u0642\u0633\u0645\u062a \u062f\u0631 \u062d\u0627\u0644 \u062a\u06a9\u0645\u06cc\u0644\n\n\u0622\u062e\u0631\u06cc\u0646 \u0645\u062a\u0646"
         )
         self.assertIs(view.get_children()[0], first)
         self.assertIs(view.get_children()[1], promoted)
@@ -701,11 +701,11 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(view.get_selected_text(), "Alpha first")
 
     def test_bidi_markers_are_not_returned_to_reply_callers(self) -> None:
-        view = MarkdownView("متن Spark اینجاست")
+        view = MarkdownView("\u0645\u062a\u0646 Spark \u0627\u06cc\u0646\u062c\u0627\u0633\u062a")
         label = view.get_children()[0]
         label.select_region(0, -1)
         selected = view.get_selected_text()
-        self.assertEqual(selected, "متن Spark اینجاست")
+        self.assertEqual(selected, "\u0645\u062a\u0646 Spark \u0627\u06cc\u0646\u062c\u0627\u0633\u062a")
         self.assertNotRegex(selected, markdown_view.BIDI_CONTROL_RE)
 
     def test_code_selection_is_exact_and_code_view_stays_ltr(self) -> None:
@@ -730,7 +730,7 @@ class SelectionTests(unittest.TestCase):
         # An unrealized selectable label is intentionally left in a reference
         # cycle.  GTK may finalize it only after the newer TextBuffer has taken
         # PRIMARY ownership, historically clearing that fresh range.
-        old_view = MarkdownView("متن Spark اینجاست")
+        old_view = MarkdownView("\u0645\u062a\u0646 Spark \u0627\u06cc\u0646\u062c\u0627\u0633\u062a")
         old_label = old_view.get_children()[0]
         old_label.select_region(0, -1)
         self.assertTrue(old_view.get_selected_text())

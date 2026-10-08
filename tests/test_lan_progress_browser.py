@@ -30,14 +30,14 @@ class LanProgressBrowserTests(unittest.IsolatedAsyncioTestCase):
             {"entries": entries, "status": status, "cursor": cursor, "truncated": truncated},
         )
 
-    def entry(self, text="در حال بررسی فایل‌ها و اجرای تست‌ها", **changes):
+    def entry(self, text="\u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627 \u0648 \u0627\u062c\u0631\u0627\u06cc \u062a\u0633\u062a\u200c\u0647\u0627", **changes):
         return {"id": "public-update", "text": text, "started_at": 1_700_000_000,
                 "updated_at": 1_700_000_001, **changes}
 
     async def test_public_log_is_safe_accessible_and_copyable(self):
         page = self.page
         await self.login(self.admin)
-        text = "در حال بررسی فایل‌ها\n<img src=x onerror=alert(1)>\nSecond line."
+        text = "\u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627\n<img src=x onerror=alert(1)>\nSecond line."
         await self.install_run([self.entry(text)], status="completed", truncated=True)
         await page.evaluate("""() => {
           mergeMessage(roomState(), {id: 'saved-progress-message', role: 'assistant',
@@ -96,7 +96,7 @@ class LanProgressBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def test_log_selection_scroll_and_lightweight_snapshots_are_stable(self):
         page = self.page
         await self.login(self.admin)
-        entries = [self.entry("\n".join(f"line {n}: متن فارسی English" for n in range(20)),
+        entries = [self.entry("\n".join(f"line {n}: \u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc English" for n in range(20)),
                               id=f"update-{number}") for number in range(12)]
         await self.install_run(entries)
         panel = page.locator('.message[data-key="run:progress-browser-run"] .run-activity')
@@ -147,8 +147,8 @@ class LanProgressBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.wait_worker_turn()
         commentary = {"id": "comment-one", "type": "agentMessage", "phase": "commentary"}
         await self.worker.event("item/started", item=commentary)
-        await self.worker.event("item/agentMessage/delta", itemId="comment-one", delta="در حال بررسی فایل‌های پروژه")
-        await self.worker.event("item/completed", item={**commentary, "text": "در حال بررسی فایل‌های پروژه"})
+        await self.worker.event("item/agentMessage/delta", itemId="comment-one", delta="\u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627\u06cc \u067e\u0631\u0648\u0698\u0647")
+        await self.worker.event("item/completed", item={**commentary, "text": "\u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627\u06cc \u067e\u0631\u0648\u0698\u0647"})
         second = {"id": "comment-two", "type": "agentMessage", "phase": "commentary"}
         await self.worker.event("item/completed", item={**second, "text": "The checks finished successfully."})
         final_item = {"id": "answer", "type": "agentMessage", "phase": "final_answer"}
@@ -163,7 +163,7 @@ class LanProgressBrowserTests(unittest.IsolatedAsyncioTestCase):
         await panel.locator(".activity-disclosure").click()
         await panel.get_by_role("tab", name="Progress log", exact=True).click()
         await expect(panel.locator(".activity-progress-entry")).to_have_count(2)
-        await expect(panel.locator(".activity-progress-text").first).to_have_text("در حال بررسی فایل‌های پروژه")
+        await expect(panel.locator(".activity-progress-text").first).to_have_text("\u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627\u06cc \u067e\u0631\u0648\u0698\u0647")
         await expect(panel.locator(".activity-progress-text").last).to_have_text("The checks finished successfully.")
         await expect(panel.locator(".activity-progress")).not_to_contain_text("Final answer only.")
         await page.evaluate("id => selectRoom(id)", other["id"])

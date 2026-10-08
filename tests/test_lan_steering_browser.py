@@ -76,12 +76,12 @@ class LanSteeringBrowserTests(unittest.IsolatedAsyncioTestCase):
         input = await self.active_chat()
         await expect(self.page.locator("#model-select")).to_be_disabled()
         await expect(self.page.locator("#effort-select")).to_be_disabled()
-        await input.fill("First update فارسی")
+        await input.fill("First update \u0641\u0627\u0631\u0633\u06cc")
         await expect(self.page.get_by_role("button", name="Send update", exact=True)).to_be_enabled()
         await input.press("Enter")
         await input.press("Enter")
         await expect(input).to_have_value("")
-        await expect(self.page.locator(".message.user .message-content").filter(has_text="First update فارسی")).to_have_count(1)
+        await expect(self.page.locator(".message.user .message-content").filter(has_text="First update \u0641\u0627\u0631\u0633\u06cc")).to_have_count(1)
         await expect(self.page.locator('.message[data-key^="run:"] .message-content')).to_have_text("Original streaming response")
         await self.page.locator("#attachment-input").set_input_files({"name": "update.png", "mimeType": "image/png", "buffer": PNG})
         await expect(self.page.locator(".attachment-card small")).to_have_text("Ready")
@@ -98,7 +98,7 @@ class LanSteeringBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(item["type"] == "localImage" for item in self.calls("turn/steer")[1]["params"]["input"]))
         await self.page.reload()
         await expect(self.page.locator("#room-title")).to_have_text("Working together")
-        for text in ("Original request", "First update فارسی", "Second update with image"):
+        for text in ("Original request", "First update \u0641\u0627\u0631\u0633\u06cc", "Second update with image"):
             await expect(self.page.locator(".message.user .message-content").filter(has_text=text)).to_have_count(1)
         await expect(self.page.locator('.message[data-key^="run:"] .message-content')).to_have_text("Original streaming response")
         await expect(self.page.locator("#stop-button")).to_be_enabled()

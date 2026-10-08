@@ -20,8 +20,8 @@ class LanReadOnlyBrowserTests(unittest.IsolatedAsyncioTestCase):
         image_path = self.service.upload_dir / "archived-image.png"
         image_path.write_bytes(PNG)
         image = self.service.store.add_attachment(self.client_id, "archived-image.png", "image/png", len(PNG), str(image_path))
-        receipt = self.service.store.create_run(self.client_id, self.foreign["id"], "Earlier question فارسی", [image["id"]], "archived-seed")
-        self.service.store.finish_run(receipt["run"]["id"], "completed", "Earlier answer فارسی\n\n```python\nprint('history stays readable')\n```")
+        receipt = self.service.store.create_run(self.client_id, self.foreign["id"], "Earlier question \u0641\u0627\u0631\u0633\u06cc", [image["id"]], "archived-seed")
+        self.service.store.finish_run(receipt["run"]["id"], "completed", "Earlier answer \u0641\u0627\u0631\u0633\u06cc\n\n```python\nprint('history stays readable')\n```")
         return image
 
     async def test_archived_room_keeps_history_copy_images_search_and_clear_new_room_action(self):
@@ -82,7 +82,7 @@ class LanReadOnlyBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.old_client_history()
         await self.login(self.client)
         await expect(self.page.locator("#room-title")).to_have_text("Client-owned room")
-        await self.page.locator("#message-input").fill("Keep the earlier draft فارسی")
+        await self.page.locator("#message-input").fill("Keep the earlier draft \u0641\u0627\u0631\u0633\u06cc")
         await self.page.locator(".message.assistant").get_by_role("button", name="Reply", exact=True).click()
         await expect(self.page.locator("#reply-preview")).to_be_visible()
         self.service.store.enable_server_execution(self.client_id)
@@ -96,7 +96,7 @@ class LanReadOnlyBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.locator("#message-input").fill("Keep the new room draft")
         await self.page.evaluate("id => selectRoom(id)", self.foreign["id"])
         await expect(self.page.locator("#read-only-notice")).to_be_visible()
-        self.assertEqual(await self.page.evaluate("roomState().draft"), "Keep the earlier draft فارسی")
+        self.assertEqual(await self.page.evaluate("roomState().draft"), "Keep the earlier draft \u0641\u0627\u0631\u0633\u06cc")
         self.assertTrue(await self.page.evaluate("!!roomState().reply"))
         await self.page.evaluate("id => selectRoom(id)", new_room["id"])
         await expect(self.page.locator("#message-input")).to_have_value("Keep the new room draft")

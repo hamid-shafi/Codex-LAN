@@ -228,7 +228,7 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(redact("eyJx.payload.signature.extra"), "[redacted token].extra")
         self.assertEqual(redact("prefix-eyJx.payload"), "prefix-[redacted token]")
         self.assertEqual(redact("prefix_eyJx.payload"), "prefix_eyJx.payload")
-        self.assertEqual(redact("حرفeyJx.payload"), "حرفeyJx.payload")
+        self.assertEqual(redact('\u062d\u0631\u0641eyJx.payload'), '\u062d\u0631\u0641eyJx.payload')
 
     def test_output_and_entry_count_have_hard_bounds(self):
         log = ActivityLog()

@@ -33,7 +33,7 @@ class LanRoomCacheBrowserTests(unittest.IsolatedAsyncioTestCase):
                 "completed",
                 "\n\n".join(
                     f"Cached answer {index}, paragraph {paragraph}: "
-                    "متن فارسی همراه English details برای حفظ موقعیت مطالعه."
+                    "\u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc \u0647\u0645\u0631\u0627\u0647 English details \u0628\u0631\u0627\u06cc \u062d\u0641\u0638 \u0645\u0648\u0642\u0639\u06cc\u062a \u0645\u0637\u0627\u0644\u0639\u0647."
                     for paragraph in range(4)
                 ),
             )
@@ -115,7 +115,7 @@ class LanRoomCacheBrowserTests(unittest.IsolatedAsyncioTestCase):
             store.finish_run(
                 run["run"]["id"],
                 "completed",
-                (f"Older-page answer {index}: متن فارسی and English detail.\n\n" * 5),
+                (f"Older-page answer {index}: \u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc and English detail.\n\n" * 5),
             )
         other = store.create_room(
             self.admin_id,

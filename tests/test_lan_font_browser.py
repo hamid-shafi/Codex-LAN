@@ -33,7 +33,7 @@ class VazirFontBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.login(self.admin)
         await expect(self.page.locator("#room-title")).to_have_text("Working together")
         await self.page.evaluate("document.fonts.ready")
-        self.assertTrue(await self.page.evaluate("document.fonts.check('16px Vazir', 'فارسی')"))
+        self.assertTrue(await self.page.evaluate("document.fonts.check('16px Vazir', '\u0641\u0627\u0631\u0633\u06cc')"))
         face = await self.page.evaluate("""() => [...document.fonts].filter(font => font.family === 'Vazir').map(font => ({
             status: font.status, display: font.display, weight: font.weight, range: font.unicodeRange
         }))""")
@@ -56,7 +56,7 @@ class VazirFontBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(any(item["familyName"].startswith("Vazir") for item in latin), latin)
         code = await fonts(".message.assistant .message-content pre code")
         self.assertFalse(any(item["familyName"].startswith("Vazir") for item in code), code)
-        await self.page.locator("#message-input").fill("متن فارسی با فونت وزیر؛ Latin text stays unchanged.")
+        await self.page.locator("#message-input").fill("\u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc \u0628\u0627 \u0641\u0648\u0646\u062a \u0648\u0632\u06cc\u0631\u061b Latin text stays unchanged.")
         for theme in ("light", "chatgpt", "cosmic"):
             await self.page.locator("#theme-select").select_option(theme)
             await self.page.locator("#timeline-scroll").evaluate("node => {node.scrollTop = 0;}")

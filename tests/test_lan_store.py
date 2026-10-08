@@ -602,19 +602,19 @@ class LanStoreTests(unittest.TestCase):
         room = self.room(title="New chat")
         first = self.make_run(
             room,
-            text="In reply to this message:\n> old quoted title\n\n# بررسی مشکل اتصال مکرر سرویس",
+            text='In reply to this message:\n> old quoted title\n\n# \u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633',
         )
-        self.assertEqual(first["room"]["title"], "بررسی مشکل اتصال مکرر سرویس")
-        self.assertEqual(self.store.get_room(self.a_id, room["id"])["title"], "بررسی مشکل اتصال مکرر سرویس")
+        self.assertEqual(first["room"]["title"], '\u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633')
+        self.assertEqual(self.store.get_room(self.a_id, room["id"])["title"], '\u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633')
         replay = self.make_run(
             room,
-            text="In reply to this message:\n> old quoted title\n\n# بررسی مشکل اتصال مکرر سرویس",
+            text='In reply to this message:\n> old quoted title\n\n# \u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633',
         )
         self.assertTrue(replay["deduplicated"])
-        self.assertEqual(replay["room"]["title"], "بررسی مشکل اتصال مکرر سرویس")
+        self.assertEqual(replay["room"]["title"], '\u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633')
         self.store.finish_run(first["run"]["id"], "completed", "done")
         second = self.make_run(room, request_id="request-2", text="A later prompt must not rename it")
-        self.assertEqual(second["room"]["title"], "بررسی مشکل اتصال مکرر سرویس")
+        self.assertEqual(second["room"]["title"], '\u0628\u0631\u0631\u0633\u06cc \u0645\u0634\u06a9\u0644 \u0627\u062a\u0635\u0627\u0644 \u0645\u06a9\u0631\u0631 \u0633\u0631\u0648\u06cc\u0633')
         self.store.finish_run(second["run"]["id"], "completed", "done")
 
         named = self.room(title="Chosen manually")
@@ -689,16 +689,16 @@ class LanStoreTests(unittest.TestCase):
         self.approve()
         room_a, room_b = self.room(), self.room(self.b_id)
         run_a, run_b = self.make_run(room_a)["run"], self.make_run(room_b)["run"]
-        first = self.store.append_event(run_a["id"], "text", {"delta": "الف"}, event_key="one")
+        first = self.store.append_event(run_a["id"], "text", {"delta": '\u0627\u0644\u0641'}, event_key="one")
         self.store.append_event(run_b["id"], "text", {"delta": "private"}, event_key="one")
-        replay = self.store.append_event(run_a["id"], "text", {"delta": "الف"}, event_key="one")
-        last = self.store.append_event(run_a["id"], "text", {"delta": "ب"})
+        replay = self.store.append_event(run_a["id"], "text", {"delta": '\u0627\u0644\u0641'}, event_key="one")
+        last = self.store.append_event(run_a["id"], "text", {"delta": '\u0628'})
         self.assertEqual(first["id"], replay["id"])
         self.assertGreater(last["id"], first["id"])
         self.store.close()
         self.store = Store(self.path)
         self.assertEqual([row["id"] for row in self.store.events(self.a_id, room_a["id"])], [first["id"], last["id"]])
-        self.assertEqual(self.store.events(self.a_id, room_a["id"], after=first["id"])[0]["payload"], {"delta": "ب"})
+        self.assertEqual(self.store.events(self.a_id, room_a["id"], after=first["id"])[0]["payload"], {"delta": '\u0628'})
         self.assertEqual(len(self.store.events(self.a_id, room_a["id"], limit=1)), 1)
 
     def test_event_burst_uses_one_transaction_and_preserves_order(self):

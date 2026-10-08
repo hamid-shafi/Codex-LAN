@@ -32,7 +32,9 @@ math, and password fields keep their left-to-right presentation.
 Vazir is bundled for Arabic-script typography; other scripts use available
 system/browser fallback fonts. Writing-direction support is not full interface
 translation or a promise that every system has fonts for every script. Multilingual
-test fixtures intentionally retain their original text.
+test fixtures retain their original Unicode text at runtime. Arabic-script samples
+use Unicode escapes in source, keeping the repository English-first without
+weakening RTL regression coverage.
 
 `Ctrl+K` / `Cmd+K` uses the physical browser key position, so switching the keyboard
 to Persian, Arabic, or Hebrew does not disable the Quick Switcher.

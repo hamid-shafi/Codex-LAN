@@ -316,9 +316,9 @@ class MultiRoomControllerTests(unittest.TestCase):
     def test_distinct_streamed_commentary_messages_start_on_a_new_line(self) -> None:
         room_id = self.room_b["id"]
         for item_id, delta in (
-            ("message-1", "دارم بررسی می‌کنم"),
+            ("message-1", "\u062f\u0627\u0631\u0645 \u0628\u0631\u0631\u0633\u06cc \u0645\u06cc\u200c\u06a9\u0646\u0645"),
             ("message-1", "..."),
-            ("message-2", "مشکل پیدا شد"),
+            ("message-2", "\u0645\u0634\u06a9\u0644 \u067e\u06cc\u062f\u0627 \u0634\u062f"),
         ):
             self.controller.on_codex_event(
                 "item/agentMessage/delta",
@@ -332,7 +332,7 @@ class MultiRoomControllerTests(unittest.TestCase):
         state = self.controller.room_turns[room_id]
         self.assertEqual(
             state["streaming_text"],
-            "دارم بررسی می‌کنم...\n\nمشکل پیدا شد",
+            "\u062f\u0627\u0631\u0645 \u0628\u0631\u0631\u0633\u06cc \u0645\u06cc\u200c\u06a9\u0646\u0645...\n\n\u0645\u0634\u06a9\u0644 \u067e\u06cc\u062f\u0627 \u0634\u062f",
         )
 
     def test_room_restore_keeps_all_live_commentary_after_item_completion(self) -> None:
@@ -619,11 +619,11 @@ class MultiRoomControllerTests(unittest.TestCase):
     def test_reasoning_summary_is_shown_as_activity(self) -> None:
         self.controller.on_codex_event(
             "item/reasoning/summaryTextDelta",
-            {"threadId": "thread-b", "turnId": "turn-b", "delta": "بررسی فایل‌ها"},
+            {"threadId": "thread-b", "turnId": "turn-b", "delta": "\u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627"},
         )
         state = self.controller.room_turns[self.room_b["id"]]
-        self.assertEqual(state["activity_text"], "بررسی فایل‌ها")
-        self.assertEqual(state["bubble"].activity, "بررسی فایل‌ها")
+        self.assertEqual(state["activity_text"], "\u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627")
+        self.assertEqual(state["bubble"].activity, "\u0628\u0631\u0631\u0633\u06cc \u0641\u0627\u06cc\u0644\u200c\u0647\u0627")
 
     def test_token_usage_event_updates_only_matching_turn(self) -> None:
         self.controller.on_codex_event(
@@ -1170,7 +1170,7 @@ class ModelEffortControlTests(unittest.TestCase):
 
 class StorePersistenceTests(unittest.TestCase):
     def test_markdown_export_preserves_persian_and_image_only_messages(self) -> None:
-        room = {"title": "گفتگوی تست"}
+        room = {"title": "\u06af\u0641\u062a\u06af\u0648\u06cc \u062a\u0633\u062a"}
         rendered = conversation_markdown(
             room,
             [
@@ -1182,16 +1182,16 @@ class StorePersistenceTests(unittest.TestCase):
                 },
                 {
                     "role": "assistant",
-                    "content": "پاسخ **Markdown**",
+                    "content": "\u067e\u0627\u0633\u062e **Markdown**",
                     "image_path": None,
                     "created_at": 1,
                 },
             ],
         )
-        self.assertIn("# گفتگوی تست", rendered)
+        self.assertIn("# \u06af\u0641\u062a\u06af\u0648\u06cc \u062a\u0633\u062a", rendered)
         self.assertIn("![Attached image](</tmp/my image.png>)", rendered)
         self.assertIn("_Image message_", rendered)
-        self.assertIn("پاسخ **Markdown**", rendered)
+        self.assertIn("\u067e\u0627\u0633\u062e **Markdown**", rendered)
 
     def test_paged_messages_include_reply_preview_and_token_usage(self) -> None:
         with tempfile.TemporaryDirectory() as tempdir:
@@ -1218,7 +1218,7 @@ class StorePersistenceTests(unittest.TestCase):
                 room["id"], "user", "", image_path="/tmp/screenshot.png"
             )
             child = store.add_message(
-                room["id"], "assistant", "دیدم", reply_to_id=parent
+                room["id"], "assistant", "\u062f\u06cc\u062f\u0645", reply_to_id=parent
             )
             page = store.list_messages_with_replies(room["id"])
             self.assertEqual(page[-1]["id"], child)
@@ -1374,13 +1374,13 @@ class StorePersistenceTests(unittest.TestCase):
             room_b = store.create_room("draft B")
             store.update_room(
                 room_a["id"],
-                draft_text="متن الف",
+                draft_text="\u0645\u062a\u0646 \u0627\u0644\u0641",
                 draft_image_path="/tmp/a.png",
                 draft_image_label="a.png",
             )
             store.update_room(
                 room_b["id"],
-                draft_text="متن ب",
+                draft_text="\u0645\u062a\u0646 \u0628",
                 draft_image_path="/tmp/b.png",
                 draft_image_label="b.png",
             )
@@ -1391,11 +1391,11 @@ class StorePersistenceTests(unittest.TestCase):
             persisted_b = reopened.get_room(room_b["id"])
             self.assertEqual(
                 (persisted_a["draft_text"], persisted_a["draft_image_path"], persisted_a["draft_image_label"]),
-                ("متن الف", "/tmp/a.png", "a.png"),
+                ("\u0645\u062a\u0646 \u0627\u0644\u0641", "/tmp/a.png", "a.png"),
             )
             self.assertEqual(
                 (persisted_b["draft_text"], persisted_b["draft_image_path"], persisted_b["draft_image_label"]),
-                ("متن ب", "/tmp/b.png", "b.png"),
+                ("\u0645\u062a\u0646 \u0628", "/tmp/b.png", "b.png"),
             )
             reopened.close()
 
@@ -1403,9 +1403,9 @@ class StorePersistenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempdir:
             path = Path(tempdir)
             first = Store(path)
-            room = first.create_room("اتاق پایدار")
+            room = first.create_room("\u0627\u062a\u0627\u0642 \u067e\u0627\u06cc\u062f\u0627\u0631")
             first.update_room(room["id"], thread_id="thread-1", model="model-1", effort="high")
-            first.add_message(room["id"], "user", "سلام")
+            first.add_message(room["id"], "user", "\u0633\u0644\u0627\u0645")
             first.close()
 
             reopened = Store(path)
@@ -1413,7 +1413,7 @@ class StorePersistenceTests(unittest.TestCase):
             self.assertEqual(persisted["thread_id"], "thread-1")
             self.assertEqual(persisted["model"], "model-1")
             self.assertEqual(persisted["effort"], "high")
-            self.assertEqual(reopened.list_messages(room["id"])[0]["content"], "سلام")
+            self.assertEqual(reopened.list_messages(room["id"])[0]["content"], "\u0633\u0644\u0627\u0645")
             reopened.close()
 
     def test_concurrent_room_writes_remain_isolated(self) -> None:
@@ -1578,10 +1578,10 @@ class MarkdownTests(unittest.TestCase):
         self.assertEqual(clean_activity_text("\x1b[31mERROR\x1b[0m\nnext"), "ERROR next")
 
     def test_fenced_cpp_block_is_separated_from_prose(self) -> None:
-        blocks = split_blocks("متن\n```cpp\nint main() {}\n```\nپایان")
-        self.assertEqual(blocks[0], ("prose", "", "متن"))
+        blocks = split_blocks("\u0645\u062a\u0646\n```cpp\nint main() {}\n```\n\u067e\u0627\u06cc\u0627\u0646")
+        self.assertEqual(blocks[0], ("prose", "", "\u0645\u062a\u0646"))
         self.assertEqual(blocks[1], ("code", "cpp", "int main() {}"))
-        self.assertEqual(blocks[2], ("prose", "", "پایان"))
+        self.assertEqual(blocks[2], ("prose", "", "\u067e\u0627\u06cc\u0627\u0646"))
 
     def test_inline_markdown_is_escaped_and_formatted(self) -> None:
         markup = inline_markup("**bold** <script> `x < y`")
@@ -1591,28 +1591,28 @@ class MarkdownTests(unittest.TestCase):
         self.assertIn("monospace", markup)
         self.assertIn("<s>old</s>", inline_markup("~~old~~"))
         persian_link = inline_markup(
-            "[مطالعه بیشتر](https://fa.wikipedia.org/wiki/یادگیری)"
+            "[\u0645\u0637\u0627\u0644\u0639\u0647 \u0628\u06cc\u0634\u062a\u0631](https://fa.wikipedia.org/wiki/\u06cc\u0627\u062f\u06af\u06cc\u0631\u06cc)"
         )
-        self.assertIn('<a href="https://fa.wikipedia.org/wiki/یادگیری">', persian_link)
+        self.assertIn('<a href="https://fa.wikipedia.org/wiki/\u06cc\u0627\u062f\u06af\u06cc\u0631\u06cc">', persian_link)
 
     def test_direction_detection_handles_persian_and_code(self) -> None:
-        self.assertTrue(is_rtl("این یک متن فارسی است"))
+        self.assertTrue(is_rtl("\u0627\u06cc\u0646 \u06cc\u06a9 \u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a"))
         self.assertFalse(is_rtl("const value = 42;"))
 
     def test_composer_switches_back_to_rtl_after_english_prefix(self) -> None:
         self.assertTrue(composer_is_rtl(""))
         self.assertFalse(composer_is_rtl("Spark"))
-        self.assertTrue(composer_is_rtl("Spark این ادامهٔ فارسی است"))
-        self.assertTrue(composer_is_rtl("English heading\nادامه فارسی"))
+        self.assertTrue(composer_is_rtl("Spark \u0627\u06cc\u0646 \u0627\u062f\u0627\u0645\u0647\u0654 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a"))
+        self.assertTrue(composer_is_rtl("English heading\n\u0627\u062f\u0627\u0645\u0647 \u0641\u0627\u0631\u0633\u06cc"))
 
     def test_ltr_identifiers_are_isolated_inside_persian_prose(self) -> None:
-        markup = inline_markup("برنامه Spark با exit code 0 تمام شد")
+        markup = inline_markup("\u0628\u0631\u0646\u0627\u0645\u0647 Spark \u0628\u0627 exit code 0 \u062a\u0645\u0627\u0645 \u0634\u062f")
         self.assertIn("\u2066Spark\u2069", markup)
         self.assertIn("\u2066exit code 0\u2069", markup)
-        self.assertIn("\u2066value_name\u2069", inline_markup("مقدار value_name است"))
+        self.assertIn("\u2066value_name\u2069", inline_markup("\u0645\u0642\u062f\u0627\u0631 value_name \u0627\u0633\u062a"))
 
     def test_prose_blocks_allow_latin_prefix_before_persian_continuation(self) -> None:
-        view = MarkdownView("توضیح فارسی\n\nSpark یک پردازش جداست")
+        view = MarkdownView("\u062a\u0648\u0636\u06cc\u062d \u0641\u0627\u0631\u0633\u06cc\n\nSpark \u06cc\u06a9 \u067e\u0631\u062f\u0627\u0632\u0634 \u062c\u062f\u0627\u0633\u062a")
         prose_labels = view.get_children()
         self.assertEqual(len(prose_labels), 2)
         self.assertEqual(
@@ -1623,8 +1623,8 @@ class MarkdownTests(unittest.TestCase):
         self.assertTrue(all(label.get_xalign() == 0.0 for label in prose_labels))
 
     def test_markdown_table_is_detected(self) -> None:
-        blocks = split_blocks("| نام | مقدار |\n| --- | ---: |\n| تست | 42 |")
-        self.assertEqual(blocks, [("table", "", "| نام | مقدار |\n| تست | 42 |")])
+        blocks = split_blocks("| \u0646\u0627\u0645 | \u0645\u0642\u062f\u0627\u0631 |\n| --- | ---: |\n| \u062a\u0633\u062a | 42 |")
+        self.assertEqual(blocks, [("table", "", "| \u0646\u0627\u0645 | \u0645\u0642\u062f\u0627\u0631 |\n| \u062a\u0633\u062a | 42 |")])
 
 
 if __name__ == "__main__":

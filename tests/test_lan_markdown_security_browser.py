@@ -28,7 +28,7 @@ class MarkdownSecurityBrowserTests(unittest.IsolatedAsyncioTestCase):
         return self.page.locator("#markdown-security-fixture")
 
     async def test_deep_quotes_keep_the_remaining_source_without_stack_overflow(self):
-        tail = " Persian فارسی <img src=x onerror=alert(1)> [unsafe](javascript:alert)"
+        tail = " Persian \u0641\u0627\u0631\u0633\u06cc <img src=x onerror=alert(1)> [unsafe](javascript:alert)"
         source = ">" * 8192 + tail
         root = await self.render(source)
         await expect(root.locator("blockquote")).to_have_count(16)

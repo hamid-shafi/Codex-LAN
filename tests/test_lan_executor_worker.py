@@ -48,7 +48,7 @@ class ExecutorHistoryTests(unittest.TestCase):
 
     def test_history_is_exact_metadata_verified_and_unmodified(self):
         content = json.dumps({"type": "session_meta", "payload": {"id": self.identifier}}) + "\n"
-        content += '{"type":"response_item","payload":{"text":"hello سلام"}}\n'
+        content += '{"type":"response_item","payload":{"text":"hello \u0633\u0644\u0627\u0645"}}\n'
         self.file.write_text(content)
         self.assertEqual(self.connection.read_history(self.identifier), content)
         self.assertIsNone(self.connection.read_history(str(uuid.uuid4())))

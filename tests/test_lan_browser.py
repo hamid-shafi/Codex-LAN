@@ -43,7 +43,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.room = self.service.store.create_room(self.admin_id, "Working together", "/home/server/project", "astra", "medium")
         self.foreign = self.service.store.create_room(self.client_id, "Client-owned room", "/home/client/project", "astra", "medium")
         run = self.service.store.create_run(self.admin_id, self.room["id"], "Help plan this project", [], "seed")
-        self.answer = self.service.store.finish_run(run["run"]["id"], "completed", "The plan starts here. این یک پاراگراف فارسی است.\n\nA purely English paragraph stays left aligned.\n\n## Practical steps\n\n- Keep the files together\n- Verify the result\n\n| Part | Notes |\n| --- | --- |\n| Browser | Persian فارسی text |\n\n```python\nprint('Native selection works')\n" + "x" * 160 + "\n```\n\n<img src=x onerror=alert(1)> is displayed as text.")
+        self.answer = self.service.store.finish_run(run["run"]["id"], "completed", "The plan starts here. \u0627\u06cc\u0646 \u06cc\u06a9 \u067e\u0627\u0631\u0627\u06af\u0631\u0627\u0641 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a.\n\nA purely English paragraph stays left aligned.\n\n## Practical steps\n\n- Keep the files together\n- Verify the result\n\n| Part | Notes |\n| --- | --- |\n| Browser | Persian \u0641\u0627\u0631\u0633\u06cc text |\n\n```python\nprint('Native selection works')\n" + "x" * 160 + "\n```\n\n<img src=x onerror=alert(1)> is displayed as text.")
         self.service.store.record_usage(run["run"]["id"], 200, 100, 50, 300)
         self.workers = []
         client_worker = await self.start_worker(self.client, "client")
@@ -213,7 +213,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         idle_room = self.service.store.create_room(self.admin_id, "Independent controls", "/home/server/second", "astra", "medium")
         history = self.service.store.create_run(self.admin_id, self.room["id"], "A long history", [], "long-history")
         self.service.store.finish_run(history["run"]["id"], "completed", "\n\n".join(
-            f"Paragraph {number}: متن فارسی برای بررسی انتخاب طبیعی، همراه English technical text."
+            f"Paragraph {number}: \u0645\u062a\u0646 \u0641\u0627\u0631\u0633\u06cc \u0628\u0631\u0627\u06cc \u0628\u0631\u0631\u0633\u06cc \u0627\u0646\u062a\u062e\u0627\u0628 \u0637\u0628\u06cc\u0639\u06cc\u060c \u0647\u0645\u0631\u0627\u0647 English technical text."
             for number in range(32)
         ))
         await self.login(self.admin)
@@ -427,7 +427,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         image_path = self.service.upload_dir / "failure-fixture.png"
         image_path.write_bytes(PNG)
         attachment = store.add_attachment(self.admin_id, "Original screenshot.png", "image/png", len(PNG), str(image_path))
-        prompt = "لطفاً این تصویر را بررسی کن.\nKeep the existing project files intact."
+        prompt = "\u0644\u0637\u0641\u0627\u064b \u0627\u06cc\u0646 \u062a\u0635\u0648\u06cc\u0631 \u0631\u0627 \u0628\u0631\u0631\u0633\u06cc \u06a9\u0646.\nKeep the existing project files intact."
         failed = store.create_run(self.admin_id, failed_room["id"], prompt, [attachment["id"]], "failed-before-turn")
         store.update_run(failed["run"]["id"], thread_id="old-thread-resume")
         answer = store.finish_run(failed["run"]["id"], "failed", "", "Codex app-server disconnected.")

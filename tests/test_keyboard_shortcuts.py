@@ -263,7 +263,7 @@ class KeyboardShortcutTests(unittest.TestCase):
         keymap.translate_keyboard_state.return_value = (True, Gdk.KEY_k, 0, 0, 0)
         control = Gdk.ModifierType.CONTROL_MASK
         with patch.object(Gdk.Keymap, "get_for_display", return_value=keymap):
-            for key in ("ن", "ל", "κ"):
+            for key in ("\u0646", "ל", "κ"):
                 with self.subTest(key=key):
                     event = self.event(Gdk.unicode_to_keyval(ord(key)), control)
                     event.hardware_keycode = 45

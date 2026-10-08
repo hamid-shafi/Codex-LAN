@@ -22,7 +22,7 @@ class CompanionStoreTests(unittest.TestCase):
             self.store.set_device(self.admin, identifier, status="approved")
         self.room = self.store.create_room(self.owner, "Source room", "/workspace", "gpt-5.6-sol", "high", speed="fast")
         self.source_run = self.store.create_run(self.owner, self.room["id"], "Earlier goal: fix the queue", [], "parent-prompt")["run"]
-        self.source = self.store.finish_run(self.source_run["id"], "completed", "Use **bounded queues** here. Full explanation ends with پایدار.")
+        self.source = self.store.finish_run(self.source_run["id"], "completed", 'Use **bounded queues** here. Full explanation ends with \u067e\u0627\u06cc\u062f\u0627\u0631.')
 
     def tearDown(self):
         self.store.close()
@@ -36,13 +36,13 @@ class CompanionStoreTests(unittest.TestCase):
         child = first["room"]
         self.assertEqual((child["model"], child["effort"], child["speed"]), ("gpt-5.6-sol", "high", "fast"))
         self.assertEqual(child["companion_kind"], "side_thread")
-        self.store.update_companion(self.owner, self.room["id"], first["id"], "draft پیش‌نویس")
+        self.store.update_companion(self.owner, self.room["id"], first["id"], 'draft \u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633')
         self.store.update_room(self.owner, child["id"], model="gpt-5.6-terra", effort="low", speed="standard", tool_read_only=True)
         self.assertEqual(self.store.get_room(self.owner, self.room["id"])["model"], "gpt-5.6-sol")
         self.store.close()
         self.store = Store(Path(self.temp.name))
         restored = self.store.list_companions(self.owner, self.room["id"])[0]
-        self.assertEqual(restored["draft"], "draft پیش‌نویس")
+        self.assertEqual(restored["draft"], 'draft \u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633')
         self.assertEqual(restored["room"]["model"], "gpt-5.6-terra")
         self.assertTrue(self.panel()["deduplicated"])
         context = self.store.companion_prompt(child["id"], "My follow-up")
@@ -78,7 +78,7 @@ class CompanionStoreTests(unittest.TestCase):
             self.store.delete_companion(self.admin, self.room["id"], first["id"])
 
     def test_literal_selection_does_not_need_to_match_stored_message(self):
-        selected = "  فارسی **rendered differently**\n\nA second message\n "
+        selected = '  \u0641\u0627\u0631\u0633\u06cc **rendered differently**\n\nA second message\n '
         for kind in ("side_thread", "more_details"):
             with self.subTest(kind=kind):
                 panel = self.store.create_companion(self.owner, self.room["id"], kind,

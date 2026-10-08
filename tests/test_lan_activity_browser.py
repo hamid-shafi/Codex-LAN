@@ -87,8 +87,8 @@ class LanActivityBrowserTests(unittest.IsolatedAsyncioTestCase):
         await panel.locator(".activity-disclosure").click()
         await panel.get_by_role("button", name="Summary", exact=True).click()
         await expect(panel.locator(".activity-latest-line")).to_have_text("First progress line")
-        await self.install_run([self.command(output="First progress line\nLatest public result فارسی\n")], cursor=101)
-        await expect(panel.locator(".activity-latest-line")).to_have_text("Latest public result فارسی")
+        await self.install_run([self.command(output="First progress line\nLatest public result \u0641\u0627\u0631\u0633\u06cc\n")], cursor=101)
+        await expect(panel.locator(".activity-latest-line")).to_have_text("Latest public result \u0641\u0627\u0631\u0633\u06cc")
         await expect(panel.locator(".activity-latest-line")).to_have_attribute("dir", "rtl")
         await page.evaluate("""() => {
             const node = document.querySelector('.activity-latest-line');
@@ -138,7 +138,7 @@ class LanActivityBrowserTests(unittest.IsolatedAsyncioTestCase):
             }""")
             before = (await panel.locator(".activity-latest").bounding_box())["height"]
             await page.evaluate("""() => {
-                roomState().runs.get('browser-log-run').latest_status_line = 'A long public update mixed with فارسی '.repeat(20);
+                roomState().runs.get('browser-log-run').latest_status_line = 'A long public update mixed with \u0641\u0627\u0631\u0633\u06cc '.repeat(20);
                 renderCurrent();
             }""")
             after = (await panel.locator(".activity-latest").bounding_box())["height"]
@@ -146,7 +146,7 @@ class LanActivityBrowserTests(unittest.IsolatedAsyncioTestCase):
             await expect(panel.locator(".activity-latest-line")).to_have_attribute("dir", "rtl")
             self.assertTrue(await page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
         await page.evaluate("""() => {
-            roomState().runs.get('browser-log-run').latest_status_line = 'Checking the updated layout — در حال بررسی نمایش گفتگو و حفظ متن انتخاب‌شده';
+            roomState().runs.get('browser-log-run').latest_status_line = 'Checking the updated layout — \u062f\u0631 \u062d\u0627\u0644 \u0628\u0631\u0631\u0633\u06cc \u0646\u0645\u0627\u06cc\u0634 \u06af\u0641\u062a\u06af\u0648 \u0648 \u062d\u0641\u0638 \u0645\u062a\u0646 \u0627\u0646\u062a\u062e\u0627\u0628\u200c\u0634\u062f\u0647';
             renderCurrent();
         }""")
         await page.screenshot(path="/tmp/codex-lan-public-summary.png")
@@ -166,7 +166,7 @@ class LanActivityBrowserTests(unittest.IsolatedAsyncioTestCase):
         page = self.page
         await self.login(self.admin)
         await expect(page.locator("#room-title")).to_have_text("Working together")
-        await self.install_run([self.command(output="\n".join(f"line {i}: فارسی English output" for i in range(100)))])
+        await self.install_run([self.command(output="\n".join(f"line {i}: \u0641\u0627\u0631\u0633\u06cc English output" for i in range(100)))])
         panel = page.locator('.message[data-key="run:browser-log-run"] .run-activity')
         await panel.locator(".activity-disclosure").click()
         await panel.get_by_role("button", name="Output", exact=True).click()

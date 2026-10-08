@@ -38,16 +38,16 @@ class BranchPanelTests(unittest.TestCase):
         self.assertIsNone(panel.answer_view)
 
     def test_quote_user_message_and_entry_follow_content_direction(self) -> None:
-        panel = BranchPanel(8, "این نقل‌قول فارسی است", [], lambda *_args: None)
+        panel = BranchPanel(8, "\u0627\u06cc\u0646 \u0646\u0642\u0644\u200c\u0642\u0648\u0644 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a", [], lambda *_args: None)
         quote = panel.get_children()[1]
         self.assertEqual(quote.get_direction(), Gtk.TextDirection.RTL)
-        user = panel.add_message("user", "این سؤال فارسی است")
+        user = panel.add_message("user", "\u0627\u06cc\u0646 \u0633\u0624\u0627\u0644 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a")
         self.assertEqual(user.get_direction(), Gtk.TextDirection.RTL)
-        mixed_user = panel.add_message("user", "Spark این سؤال فارسی است")
+        mixed_user = panel.add_message("user", "Spark \u0627\u06cc\u0646 \u0633\u0624\u0627\u0644 \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a")
         self.assertEqual(mixed_user.get_direction(), Gtk.TextDirection.RTL)
-        panel.entry.set_text("این ورودی فارسی است")
+        panel.entry.set_text("\u0627\u06cc\u0646 \u0648\u0631\u0648\u062f\u06cc \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a")
         self.assertEqual(panel.entry.get_direction(), Gtk.TextDirection.RTL)
-        panel.entry.set_text("Spark این ورودی فارسی است")
+        panel.entry.set_text("Spark \u0627\u06cc\u0646 \u0648\u0631\u0648\u062f\u06cc \u0641\u0627\u0631\u0633\u06cc \u0627\u0633\u062a")
         self.assertEqual(panel.entry.get_direction(), Gtk.TextDirection.RTL)
         panel.entry.set_text("English input")
         self.assertEqual(panel.entry.get_direction(), Gtk.TextDirection.LTR)

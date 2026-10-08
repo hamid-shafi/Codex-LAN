@@ -19,14 +19,14 @@ class InternationalDirectionBrowserTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_all_rtl_script_families_and_mixed_prefixes_use_strong_bidi_classes(self):
         rtl = [
-            "سلام", "مرحبا", "שלום", "اردو", "\u0710\u0712", "\u0780\u0781", "\u07ca\u07cb",
+            "\u0633\u0644\u0627\u0645", "\u0645\u0631\u062d\u0628\u0627", "שלום", "\u0627\u0631\u062f\u0648", "\u0710\u0712", "\u0780\u0781", "\u07ca\u07cb",
             "\u0800\u0801", "\u0840\u0841", "\U0001e900\U0001e901", "\U00010d00", "\U00010d50",
             "\U00010940", "\U00010840", "\U00010f70", "\U0001ee00", "\ufb1d", "\ufb50",
         ]
-        ltr = ["", "English", "Ελληνικά", "中文", "हिन्दी", "日本語", "🙂", "123", "١٢٣", "۱۲۳", "،", "\u064e\u064f", "\u05b0", "\u200c\u200d", "\U0001e944"]
+        ltr = ["", "English", "Ελληνικά", "中文", "हिन्दी", "日本語", "🙂", "123", "\u0661\u0662\u0663", "\u06f1\u06f2\u06f3", "\u060c", "\u064e\u064f", "\u05b0", "\u200c\u200d", "\U0001e944"]
         actual = await self.page.evaluate("values => values.map(direction)", rtl + [f"identifier {value}" for value in rtl] + ltr)
         self.assertEqual(actual, ["rtl"] * (2 * len(rtl)) + ["ltr"] * len(ltr))
-        for value in ("שלום", "\U0001e900\U0001e901", "identifier اردو", "١٢٣", "Ελληνικά"):
+        for value in ("שלום", "\U0001e900\U0001e901", "identifier \u0627\u0631\u062f\u0648", "\u0661\u0662\u0663", "Ελληνικά"):
             await self.page.locator("#message-input").fill(value)
             await expect(self.page.locator("#message-input")).to_have_attribute("dir", "rtl" if value in rtl or value.startswith("identifier") else "ltr")
         self.assertFalse(self.errors)
@@ -36,7 +36,7 @@ class InternationalDirectionBrowserTests(unittest.IsolatedAsyncioTestCase):
           const fixture = document.createElement('section');
           fixture.id = 'international-direction-fixture';
           fixture.className = 'message-content';
-          fixture.append(markdown('## identifier שלום\\n\\nمرحبا `variable = 42`\\n\\n- اردو\\n\\n> \\u0710\\u0712\\n\\n| שלום | English |\\n| --- | --- |\\n| \\u0780\\u0781 | ١٢٣ |\\n\\n```python\\nprint("שלום")\\n```\\n\\n\\\\[x^2 + 1\\\\]'));
+          fixture.append(markdown('## identifier שלום\\n\\n\u0645\u0631\u062d\u0628\u0627 `variable = 42`\\n\\n- \u0627\u0631\u062f\u0648\\n\\n> \\u0710\\u0712\\n\\n| שלום | English |\\n| --- | --- |\\n| \\u0780\\u0781 | \u0661\u0662\u0663 |\\n\\n```python\\nprint("שלום")\\n```\\n\\n\\\\[x^2 + 1\\\\]'));
           document.body.append(fixture);
           mergeRoom({id:state.selected, title:'identifier שלום'});
           renderHeader();

@@ -50,7 +50,7 @@ class LanRoomIndicatorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_room_controls_and_enter_setting_fit_themes_and_mobile(self):
         background = self.service.store.create_room(
-            self.admin_id, "Background tasks · اتاق دوم", "/home/server/background", "astra", "medium"
+            self.admin_id, 'Background tasks \xb7 \u0627\u062a\u0627\u0642 \u062f\u0648\u0645', "/home/server/background", "astra", "medium"
         )
         self.service.store.update_room(self.admin_id, self.room["id"], title=self.room["title"])
         await self.login(self.admin)
