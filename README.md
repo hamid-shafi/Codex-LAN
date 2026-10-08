@@ -36,10 +36,17 @@ test fixtures retain their original Unicode text at runtime. Arabic-script sampl
 use Unicode escapes in source, keeping the repository English-first without
 weakening RTL regression coverage.
 
-`Ctrl+/` / `Cmd+/` opens the keyboard guide; the small badge beside room search
-opens the same guide. `Ctrl+K` / `Cmd+K` still opens the Quick Switcher. These
-navigation shortcuts use physical browser key positions, so changing the keyboard
-layout does not disable them. Entering a room dismisses its reply notification;
+The compact profile button at the bottom of the sidebar opens your account menu:
+profile details, My Usage, Easy sign-in, appearance toggle, keyboard guide, and
+Administration when authorized. Room search stays free of shortcut badges.
+`Ctrl+/` / `Cmd+/` opens the keyboard guide directly; `Ctrl+K` / `Cmd+K` opens
+the Quick Switcher. These navigation shortcuts use physical browser key positions,
+so changing the keyboard layout does not disable them. In chat, `Ctrl+Alt+PageUp`
+and `Ctrl+Alt+PageDown` navigate the displayed rooms, `Ctrl+Alt+S` cycles supported
+response speeds, and `Ctrl+Alt+R` toggles the draft's read-only preference. Changing
+that preference during a response still requires **Send update** to apply it.
+Other text fields, open menus/dialogs, and AltGr retain their own key handling.
+Entering a room dismisses its reply notification;
 acknowledging unread messages still requires the page to be visible and focused.
 Modal dialogs, including My Usage, close on a click outside their bounds. Floating
 More Details and side-thread panels keep their explicit close controls.

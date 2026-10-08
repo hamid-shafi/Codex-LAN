@@ -12,8 +12,10 @@ class LanDialogDismissalBrowserTests(unittest.IsolatedAsyncioTestCase):
     asyncTearDown = browser_fixture.LanBrowserTests.asyncTearDown
     start_worker = browser_fixture.LanBrowserTests.start_worker
     login = browser_fixture.LanBrowserTests.login
+    open_account_menu = browser_fixture.LanBrowserTests.open_account_menu
 
     async def open_usage(self):
+        await self.open_account_menu()
         await self.page.locator("#my-usage-open").click()
         dialog = self.page.locator("#my-usage-dialog")
         await expect(dialog).to_be_visible()
@@ -25,8 +27,33 @@ class LanDialogDismissalBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.page.evaluate("new URL(location.href).searchParams.get('panel')"), "usage")
         await self.page.mouse.click(2, 2)
         await expect(dialog).to_be_hidden()
-        await expect(self.page.locator("#my-usage-open")).to_be_focused()
+        await expect(self.page.locator("#account-menu-open")).to_be_focused()
         await self.page.wait_for_function("() => !new URL(location.href).searchParams.has('panel')")
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_saved_room_settings_clear_route_before_queued_close_event(self):
+        await self.login(self.admin)
+        await self.page.locator("#room-menu").click()
+        dialog = self.page.locator("#room-dialog")
+        await expect(dialog).to_be_visible()
+        self.assertEqual(await self.page.evaluate("new URL(location.href).searchParams.get('panel')"), "room-settings")
+        await self.page.locator("#room-name-input").fill("Saved settings stay closed")
+        await dialog.evaluate("""node => {
+          node.addEventListener('close', event => event.stopImmediatePropagation(), {capture: true, once: true});
+        }""")
+        await self.page.locator("#room-save").click()
+        await expect(dialog).to_be_hidden()
+        await expect(self.page.locator("#room-title")).to_have_text("Saved settings stay closed")
+        self.assertIsNone(await self.page.evaluate("new URL(location.href).searchParams.get('panel')"))
+        self.assertEqual(self.service.store.get_room(self.admin_id, self.room["id"])["title"], "Saved settings stay closed")
+
+        await self.page.reload()
+        await self.page.wait_for_function("() => state.routeReady")
+        await expect(dialog).to_be_hidden()
+        await expect(self.page.locator("#room-title")).to_have_text("Saved settings stay closed")
+        await self.page.locator("#room-search").fill("Saved settings stay closed")
+        await expect(self.page.locator("#room-search")).to_have_value("Saved settings stay closed")
+        await expect(self.page.locator("#room-list .room-row")).to_have_count(1)
         self.assertFalse(self.errors, self.errors)
 
     async def test_padding_drag_and_cancel_are_not_backdrop_clicks(self):
@@ -82,6 +109,7 @@ class LanDialogDismissalBrowserTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_signin_backdrop_resets_passwords_without_saving(self):
         await self.login(self.admin)
+        await self.open_account_menu()
         await self.page.locator("#browser-login-open").click()
         dialog = self.page.locator("#browser-login-dialog")
         await expect(dialog).to_be_visible()
@@ -102,6 +130,7 @@ class LanDialogDismissalBrowserTests(unittest.IsolatedAsyncioTestCase):
         try:
             await self.login(self.admin, page=page)
             await page.locator("#sidebar-toggle").tap()
+            await page.locator("#account-menu-open").tap()
             await page.locator("#my-usage-open").tap()
             dialog = page.locator("#my-usage-dialog")
             await expect(dialog).to_be_visible()
@@ -118,12 +147,13 @@ class LanDialogDismissalBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.login(self.admin)
         await self.page.set_viewport_size({"width": 390, "height": 844})
         await self.page.locator("#sidebar-toggle").click()
+        await self.page.locator("#account-menu-open").click()
         await self.page.locator("#shortcut-help-open").click()
         await expect(self.page.locator("#shortcut-help")).to_be_visible()
         await self.page.keyboard.press("Escape")
         await expect(self.page.locator("#shortcut-help")).to_be_hidden()
         await expect(self.page.locator("#workspace")).to_have_class("workspace sidebar-open")
-        await expect(self.page.locator("#shortcut-help-open")).to_be_focused()
+        await expect(self.page.locator("#account-menu-open")).to_be_focused()
         await self.page.keyboard.press("Escape")
         await expect(self.page.locator("#workspace")).to_have_class("workspace")
         await expect(self.page.locator("#sidebar-toggle")).to_be_focused()

@@ -75,14 +75,23 @@
     <aside id="sidebar" class="sidebar" aria-label="Rooms">
       <div class="sidebar-brand"><svg class="brand-mark" aria-hidden="true"><use href="#codex-brand"/></svg><div><span class="brand-name">Codex</span><span class="brand-caption">Shared workspace</span></div></div>
       <button id="new-room" class="button new-room" type="button"><span aria-hidden="true">＋</span> New room</button>
-      <div class="search-field"><label class="sr-only" for="room-search">Search rooms or people</label><input id="room-search" type="search" placeholder="Search rooms or people" autocomplete="off"><button id="shortcut-help-open" class="shortcut-help-open" type="button" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-controls="shortcut-help" aria-keyshortcuts="Control+/ Meta+/" title="Keyboard shortcuts · Ctrl+/ or Cmd+/"><kbd>Ctrl /</kbd></button></div>
+      <div class="search-field"><label class="sr-only" for="room-search">Search rooms or people</label><input id="room-search" type="search" placeholder="Search rooms or people" autocomplete="off"></div>
       <div class="sidebar-section"><span>Rooms</span><span id="room-count">0</span></div>
       <div id="room-list" class="room-list" role="navigation" aria-label="Room list"></div>
       <div class="sidebar-bottom">
-        <button id="my-usage-open" class="button subtle my-usage-link" type="button" aria-haspopup="dialog">My usage <span id="my-usage-brief" class="muted"></span></button>
-        <button id="browser-login-open" class="button subtle browser-login-link" type="button" aria-haspopup="dialog">Easy sign-in <span id="browser-login-brief" class="muted">Set up</span></button>
-        <button id="admin-open" class="button subtle admin-link" type="button" hidden>Administration <span aria-hidden="true">↗</span></button>
-        <div class="device-row"><span class="device-avatar" aria-hidden="true">D</span><div><strong id="device-name">Device</strong><span id="device-role">Client</span></div><button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to dark theme" title="Switch theme">◐</button></div>
+        <div id="account-menu" class="account-menu" role="dialog" aria-label="Profile and settings" hidden>
+          <div class="account-menu-profile"><p class="eyebrow">YOUR PROFILE</p><strong id="account-profile-name">This device</strong><dl><div><dt>Role</dt><dd id="account-profile-role">Connected client</dd></div><div><dt>Access</dt><dd id="account-profile-status">Approved</dd></div></dl></div>
+          <div class="account-menu-actions">
+            <button id="my-usage-open" class="account-menu-item" type="button" aria-haspopup="dialog" aria-controls="my-usage-dialog" data-account-action><span class="account-menu-icon" aria-hidden="true">◔</span><span>My usage</span><span id="my-usage-brief" class="account-menu-detail"></span></button>
+            <button id="browser-login-open" class="account-menu-item" type="button" aria-haspopup="dialog" aria-controls="browser-login-dialog" data-account-action><span class="account-menu-icon" aria-hidden="true">♧</span><span>Easy sign-in</span><span id="browser-login-brief" class="account-menu-detail">Set up</span></button>
+            <button id="admin-open" class="account-menu-item" type="button" data-account-action hidden><span class="account-menu-icon" aria-hidden="true">⌘</span><span>Administration</span><span class="account-menu-detail" aria-hidden="true">↗</span></button>
+          </div>
+          <div class="account-menu-actions account-menu-preferences">
+            <button id="theme-toggle" class="account-menu-item" type="button" aria-label="Switch to dark theme" title="Switch theme" data-account-action><span class="account-menu-icon" aria-hidden="true">◐</span><span>Appearance</span><span id="account-theme-name" class="account-menu-detail">Light</span></button>
+            <button id="shortcut-help-open" class="account-menu-item" type="button" aria-haspopup="dialog" aria-controls="shortcut-help" aria-keyshortcuts="Control+/ Meta+/" data-account-action><span class="account-menu-icon" aria-hidden="true">⌨</span><span>Keyboard shortcuts</span><span class="account-menu-detail" aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <button id="account-menu-open" class="account-menu-open" type="button" aria-haspopup="dialog" aria-controls="account-menu" aria-expanded="false" title="Profile and settings"><span class="device-avatar" aria-hidden="true">D</span><span class="account-menu-identity"><strong id="device-name">Device</strong><span id="device-role">Client</span></span><svg class="account-menu-chevron" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 12 4-4 4 4"/></svg></button>
       </div>
     </aside>
 
@@ -253,6 +262,7 @@
       <dl class="shortcut-help-list">
         <div><dt>Open or close this guide</dt><dd><kbd>Ctrl /</kbd><span>or</span><kbd>Cmd /</kbd></dd></div>
         <div><dt>Open or close the quick switcher</dt><dd><kbd>Ctrl K</kbd><span>or</span><kbd>Cmd K</kbd></dd></div>
+        <div><dt>Previous or next room in the sidebar</dt><dd><kbd>Ctrl Alt PageUp</kbd><kbd>Ctrl Alt PageDown</kbd></dd></div>
         <div><dt>Navigate the quick switcher</dt><dd><kbd>↑</kbd><kbd>↓</kbd></dd></div>
         <div><dt>Open the selected switcher result</dt><dd><kbd>Enter</kbd></dd></div>
         <div><dt>Close a dialog or model picker</dt><dd><kbd>Esc</kbd></dd></div>
@@ -268,13 +278,15 @@
       <p class="shortcut-help-note muted">Double Enter to send requires two quick presses. Turn it off to send with one Enter. Send shortcuts apply while typing a message.</p>
     </section>
     <section class="shortcut-help-section" aria-labelledby="shortcut-controls-title">
-      <h3 id="shortcut-controls-title">Model and thinking</h3>
+      <h3 id="shortcut-controls-title">Response controls</h3>
       <dl class="shortcut-help-list">
         <div><dt>Previous or next model</dt><dd><kbd>Ctrl Alt ↑</kbd><kbd>Ctrl Alt ↓</kbd></dd></div>
         <div><dt>Increase thinking effort</dt><dd><kbd>Alt ↑</kbd></dd></div>
         <div><dt>Decrease thinking effort</dt><dd><kbd>Alt ↓</kbd></dd></div>
+        <div><dt>Switch Standard / Fast when supported</dt><dd><kbd>Ctrl Alt S</kbd></dd></div>
+        <div><dt>Toggle Read only for the next message or update</dt><dd><kbd>Ctrl Alt R</kbd></dd></div>
       </dl>
-      <p class="shortcut-help-note muted">Available in chat when the controls are enabled, including while typing a message. Other text fields and open dialogs keep their own keyboard controls.</p>
+      <p class="shortcut-help-note muted">Available in chat when the controls are enabled, including while typing a message. Other text fields and open dialogs keep their own keyboard controls. Changing Read only does not change a running response until you send an update. Fast may use more of the shared allowance.</p>
     </section>
   </dialog>
   <dialog id="quick-switcher" class="quick-switcher" aria-labelledby="quick-switcher-title">

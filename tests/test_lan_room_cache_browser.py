@@ -17,6 +17,7 @@ class LanRoomCacheBrowserTests(unittest.IsolatedAsyncioTestCase):
     asyncTearDown = browser_fixture.LanBrowserTests.asyncTearDown
     start_worker = browser_fixture.LanBrowserTests.start_worker
     login = browser_fixture.LanBrowserTests.login
+    open_account_menu = browser_fixture.LanBrowserTests.open_account_menu
 
     async def test_returning_to_cached_room_is_immediate_and_restores_scroll(self):
         store = self.service.store
@@ -291,6 +292,7 @@ class LanRoomCacheBrowserTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_deleted_selected_room_does_not_close_administration(self):
         await self.login(self.admin)
+        await self.open_account_menu()
         await self.page.locator("#admin-open").click()
         await expect(self.page.locator("#admin-view")).to_be_visible()
 

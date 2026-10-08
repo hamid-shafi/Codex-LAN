@@ -987,6 +987,7 @@ function setTheme(theme, persist = true) {
   const label = themeLabels[next] || next[0].toUpperCase() + next.slice(1);
   $("theme-toggle").setAttribute("aria-label", `Switch to ${label} theme`);
   $("theme-toggle").title = `Switch to ${label} theme`;
+  $("account-theme-name").textContent = themeLabels[current] || current[0].toUpperCase() + current.slice(1);
   if (persist) {
     state.themeExplicit = true;
     try { localStorage.setItem("codex-lan-theme", current); } catch {}
@@ -1033,6 +1034,7 @@ function cancelTimers() {
 }
 
 function showLogin(message = "", isError = !!message) {
+  closeAccountMenu();
   cancelTimers();
   clearRoomStates();
   state.me = null;
@@ -1064,6 +1066,7 @@ function showLogin(message = "", isError = !!message) {
 }
 
 function showDeviceStatus(device) {
+  closeAccountMenu();
   cancelTimers();
   $("workspace").hidden = true;
   $("gate").hidden = false;
@@ -1121,6 +1124,7 @@ async function runSessionCheck() {
     const first = !state.me || $("workspace").hidden;
     const changedIdentity = !!state.me && idOf(state.me.id) !== idOf(device.id);
     if (changedIdentity) {
+      closeAccountMenu();
       await clearRoomStates();
       state.rooms = []; state.selected = null; state.routeReady = false;
     }
@@ -1148,6 +1152,7 @@ async function runSessionCheck() {
     $("device-name").textContent = device.name || "This device";
     $("device-role").textContent = isAdmin() ? "Server administrator" : "Connected client";
     $("admin-open").hidden = !isAdmin();
+    renderAccountProfile();
     renderBrowserLoginSettings();
     renderEasySignInOffer();
     renderMyUsage();
@@ -1562,6 +1567,74 @@ function renderRooms() {
   for (const node of [...list.childNodes]) if (!keep.has(node)) node.remove();
 }
 
+function renderAccountProfile() {
+  const name = state.me?.name || "This device";
+  $("account-profile-name").textContent = name;
+  $("account-profile-name").dir = direction(name);
+  $("device-name").dir = direction(name);
+  $("account-profile-role").textContent = isAdmin() ? "Administrator" : "Connected client";
+  const status = state.me?.status || "pending";
+  $("account-profile-status").textContent = ["approved", "active"].includes(status) ? "Approved" : status[0].toUpperCase() + status.slice(1);
+}
+
+function accountMenuButtons() {
+  return [...$("account-menu").querySelectorAll("button")].filter((button) => !button.hidden && !button.disabled);
+}
+
+function closeAccountMenu({ restoreFocus = false } = {}) {
+  const menu = $("account-menu");
+  if (menu.hidden) return false;
+  menu.hidden = true;
+  const trigger = $("account-menu-open");
+  trigger.setAttribute("aria-expanded", "false");
+  if (restoreFocus && !$("workspace").hidden && !$("sidebar").inert && !document.querySelector("dialog[open]")) trigger.focus({ preventScroll: true });
+  return true;
+}
+
+function openAccountMenu({ last = false } = {}) {
+  if (embeddedRoomId || !state.me || $("workspace").hidden || $("sidebar").inert || document.querySelector("dialog[open]")) return false;
+  window.CodexControls?.close(true);
+  renderAccountProfile();
+  $("account-menu").hidden = false;
+  $("account-menu-open").setAttribute("aria-expanded", "true");
+  const buttons = accountMenuButtons();
+  (last ? buttons.at(-1) : buttons[0])?.focus({ preventScroll: true });
+  return true;
+}
+
+function bindAccountMenuEvents() {
+  const menu = $("account-menu"), trigger = $("account-menu-open");
+  trigger.addEventListener("click", () => {
+    if (!closeAccountMenu({ restoreFocus: true })) openAccountMenu();
+  });
+  menu.addEventListener("click", (event) => {
+    // Modal actions must capture a visible return target, not their soon-hidden menu item.
+    if (event.target.closest("[data-account-action]")) closeAccountMenu({ restoreFocus: true });
+  }, true);
+  document.addEventListener("pointerdown", (event) => {
+    if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) closeAccountMenu();
+  }, true);
+  document.addEventListener("focusin", (event) => {
+    if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) closeAccountMenu();
+  }, true);
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (menu.hidden) {
+      if (event.target === trigger && ["ArrowUp", "ArrowDown"].includes(event.key) && openAccountMenu({ last: event.key === "ArrowUp" })) event.preventDefault();
+      return;
+    }
+    if (event.key === "Escape") { event.preventDefault(); closeAccountMenu({ restoreFocus: true }); return; }
+    if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+    const buttons = accountMenuButtons();
+    if (!buttons.length) return;
+    const current = buttons.indexOf(document.activeElement);
+    const index = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+      : (current + (event.key === "ArrowUp" ? -1 : 1) + buttons.length) % buttons.length;
+    event.preventDefault();
+    buttons[index].focus({ preventScroll: true });
+  }, true);
+}
+
 // CODEX: The quick switcher keeps navigation local to the loaded workspace and never needs another server request.
 let quickSwitcherItems = [];
 let quickSwitcherIndex = 0;
@@ -1686,6 +1759,7 @@ function openQuickSwitcher() {
   const dialog = $("quick-switcher");
   if (dialog.open) { dialog.close(); return true; }
   if (document.querySelector("dialog[open]")) return false;
+  closeAccountMenu({ restoreFocus: true });
   quickSwitcherReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   $("quick-switcher-input").value = "";
   quickSwitcherIndex = 0;
@@ -1702,6 +1776,7 @@ function openShortcutHelp() {
   const dialog = $("shortcut-help");
   if (dialog.open) { dialog.close(); return true; }
   if (document.querySelector("dialog[open]")) return false;
+  closeAccountMenu({ restoreFocus: true });
   window.CodexControls?.close(true);
   shortcutHelpReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const doubleEnter = syncEnterPreference();
@@ -3741,6 +3816,8 @@ async function submitRoom(event) {
     const result = await api(dialog.mode === "edit" ? `/api/rooms/${encodeURIComponent(dialog.roomId)}` : "/api/rooms", { method: dialog.mode === "edit" ? "PATCH" : "POST", body: JSON.stringify(payload) });
     const room = result.room || result; mergeRoom(room);
     $("room-dialog").close();
+    // Persist the closed panel synchronously so an immediate reload cannot reopen it.
+    persistVisibleRoute("replace");
     if (dialog.mode === "edit") { renderCurrent(); }
     else { await selectRoom(room.id); closeSidebar(); }
   } catch (error) { if (error.readOnly && dialog.roomId) markRoomReadOnly(dialog.roomId, error.message); $("dialog-error").textContent = error.message; $("dialog-error").classList.add("error"); }
@@ -4371,6 +4448,7 @@ function updateSidebarAccessibility() {
   const sidebar = $("sidebar"), toggle = $("sidebar-toggle"), main = document.querySelector(".main");
   const label = expanded ? "Hide rooms" : "Show rooms";
   main.inert = mobile && expanded;
+  if (!expanded) closeAccountMenu();
   if (!expanded && sidebar.contains(document.activeElement)) toggle.focus({ preventScroll: true });
   sidebar.inert = !expanded;
   sidebar.setAttribute("aria-hidden", String(!expanded));
@@ -4441,8 +4519,8 @@ function bindDialogBackdropDismissal() {
 }
 
 function cycleSetting(event) {
-  if (event.defaultPrevented || event.isComposing || event.repeat || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
-  if (state.view !== "chat" || document.querySelector("dialog[open]")) return;
+  if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat || event.getModifierState?.("AltGraph") || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+  if (state.view !== "chat" || document.querySelector("dialog[open]") || $("account-menu")?.hidden === false) return;
   const target = event.target instanceof Element ? event.target : null;
   if (target?.closest("input, textarea, select, [contenteditable='true']") && target !== $("message-input")) return;
   const modelShortcut = event.altKey && event.ctrlKey && !event.metaKey && !event.shiftKey;
@@ -4464,10 +4542,52 @@ function cycleSetting(event) {
   select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function handleComposerShortcut(event) {
+  if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat || event.getModifierState?.("AltGraph")) return;
+  if (!event.ctrlKey || !event.altKey || event.metaKey || event.shiftKey) return;
+  if (!state.me || $("workspace").hidden || state.view !== "chat" || document.querySelector("dialog[open]") || $("account-menu")?.hidden === false) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), [role='textbox']") && target !== $("message-input")) return;
+  const code = event.code || ({ s: "KeyS", r: "KeyR", pageup: "PageUp", pagedown: "PageDown" })[event.key?.toLowerCase()];
+  if (code === "PageUp" || code === "PageDown") {
+    if (embeddedRoomId) return;
+    // Follow the filtered sidebar order without exposing hidden companion or inaccessible rooms.
+    const accessible = new Map(state.rooms.filter((room) => !room.companion_kind).map((room) => [idOf(room.id), room]));
+    const rooms = [...$("room-list").querySelectorAll(".room-row[data-room-id]")]
+      .filter((row) => !row.hidden).map((row) => accessible.get(row.dataset.roomId)).filter(Boolean);
+    if (!rooms.length) return;
+    const current = rooms.findIndex((room) => idOf(room.id) === state.selected);
+    const direction = code === "PageDown" ? 1 : -1;
+    const index = current < 0 ? (direction > 0 ? 0 : rooms.length - 1) : (current + direction + rooms.length) % rooms.length;
+    event.preventDefault();
+    selectRoom(rooms[index].id).catch((error) => toast(error.message));
+    closeSidebar();
+    return;
+  }
+  if (code === "KeyS") {
+    const select = $("speed-select");
+    if (select.disabled) return;
+    const options = [...select.options].filter((option) => !option.disabled && option.value);
+    if (options.length < 2) return;
+    const current = Math.max(0, options.findIndex((option) => option.value === select.value));
+    event.preventDefault();
+    select.value = options[(current + 1) % options.length].value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  } else if (code === "KeyR") {
+    const checkbox = $("tool-read-only");
+    if (checkbox.disabled) return;
+    event.preventDefault();
+    checkbox.checked = !checkbox.checked;
+    // Use the same preference change as a click; applying it to a running turn still needs Send update.
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
 function bindEvents() {
   bindDialogBackdropDismissal();
   window.CodexHostSetup?.init({ api, copyText, isActive: () => isAdmin() && state.view === "admin" && state.adminPanel === "host-setup" });
   document.addEventListener("focusin", () => { state.focusRevision += 1; }, true);
+  bindAccountMenuEvents();
   $("toast-close").addEventListener("click", () => dismissToast());
   $("password-login-form").addEventListener("submit", (event) => { event.preventDefault(); loginWithPassword(); });
   $("password-login-show").addEventListener("click", () => togglePasswordVisibility($("password-login-show"), [$("password-login-password")]));
@@ -4616,6 +4736,7 @@ function bindEvents() {
   document.addEventListener("keydown", (event) => { if (!event.defaultPrevented && event.key === "Escape" && !document.querySelector("dialog[open]") && mobileSidebar() && $("workspace").classList.contains("sidebar-open")) { closeSidebar(); $("sidebar-toggle").focus({ preventScroll: true }); } });
   document.addEventListener("keydown", handleQuickSwitcherKey);
   document.addEventListener("keydown", cycleSetting);
+  document.addEventListener("keydown", handleComposerShortcut);
   window.addEventListener("online", resumeServerConnection);
   window.addEventListener("offline", () => { state.serverBrowserOffline = true; scheduleServerUnreachable(++state.serverRequestId); });
   window.addEventListener("focus", resumeServerConnection);

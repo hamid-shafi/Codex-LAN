@@ -15,6 +15,7 @@ class LanProviderUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
     asyncTearDown = browser_fixture.LanBrowserTests.asyncTearDown
     start_worker = browser_fixture.LanBrowserTests.start_worker
     open_admin_device = browser_fixture.LanBrowserTests.open_admin_device
+    open_account_menu = browser_fixture.LanBrowserTests.open_account_menu
 
     async def open_usage(self, provider):
         self.provider = provider
@@ -24,6 +25,7 @@ class LanProviderUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         }))
         await self.page.goto(self.base + "#login=" + self.admin["token"])
         await expect(self.page.locator("#workspace")).to_be_visible()
+        await self.open_account_menu()
         await self.page.locator("#admin-open").click()
         await expect(self.page.locator("#provider-usage")).to_be_visible()
 

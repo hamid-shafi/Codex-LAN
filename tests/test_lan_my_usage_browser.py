@@ -14,6 +14,7 @@ class LanMyUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
     asyncSetUp = browser_fixture.LanBrowserTests.asyncSetUp
     asyncTearDown = browser_fixture.LanBrowserTests.asyncTearDown
     start_worker = browser_fixture.LanBrowserTests.start_worker
+    open_account_menu = browser_fixture.LanBrowserTests.open_account_menu
 
     async def open_client(self, quota):
         self.quota = quota
@@ -37,6 +38,7 @@ class LanMyUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.route("**/api/usage/me", refresh_report)
         await self.page.goto(self.base + "#login=" + self.client["token"])
         await expect(self.page.locator("#workspace")).to_be_visible()
+        await self.open_account_menu()
         await expect(self.page.locator("#admin-open")).to_be_hidden()
         await self.page.get_by_role("button", name="My usage").click()
         await expect(self.page.get_by_role("dialog", name="My weekly usage")).to_be_visible()
@@ -63,7 +65,8 @@ class LanMyUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.screenshot(path="/tmp/codex-lan-my-usage.png", full_page=True)
         await self.page.keyboard.press("Escape")
         await expect(dialog).to_be_hidden()
-        await expect(self.page.locator("#my-usage-open")).to_be_focused()
+        await expect(self.page.locator("#account-menu-open")).to_be_focused()
+        await self.open_account_menu()
         await self.page.locator("#my-usage-open").click()
         await self.page.get_by_role("button", name="Close my usage").click()
         await expect(dialog).to_be_hidden()
@@ -159,6 +162,7 @@ class LanMyUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.goto(self.base + "#login=" + self.admin["token"])
         await expect(self.page.locator("#workspace")).to_be_visible()
         await expect(self.page.locator("#my-usage-brief")).to_have_text("3% official")
+        await self.open_account_menu()
         await self.page.get_by_role("button", name="My usage").click()
         dialog = self.page.locator("#my-usage-dialog")
         await expect(dialog).to_contain_text("At least 8.57 account-percentage points are attributable to this device from recorded work · No personal weekly cap")

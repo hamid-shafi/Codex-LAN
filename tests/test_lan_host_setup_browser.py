@@ -40,6 +40,7 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
     asyncTearDown = browser_fixture.LanBrowserTests.asyncTearDown
     start_worker = browser_fixture.LanBrowserTests.start_worker
     login = browser_fixture.LanBrowserTests.login
+    open_account_menu = browser_fixture.LanBrowserTests.open_account_menu
 
     async def setup_api(self):
         self.setup = copy.deepcopy(HOST_SETUP)
@@ -59,6 +60,7 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def open_setup(self):
         await self.setup_api()
         await self.login(self.admin)
+        await self.open_account_menu()
         await self.page.locator("#admin-open").click()
         await self.page.locator("#host-setup-open").click()
         await expect(self.page.locator("#host-setup-name")).to_have_text("portable-host · Linux")
@@ -131,6 +133,7 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
     async def test_client_cannot_reach_setup_ui_and_reported_text_is_inert(self):
         await self.setup_api()
         await self.login(self.client)
+        await self.open_account_menu()
         await expect(self.page.locator("#admin-open")).to_be_hidden()
         await self.page.goto(self.base + "?view=admin&panel=host-setup")
         await self.page.wait_for_function("() => state.routeReady")
@@ -140,6 +143,7 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.setup["host"]["hostname"] = "<img src=x onerror=alert(1)>"
         self.setup["notices"] = ["<script>alert('secret')</script>"]
         self.setup["network"]["public_origin"] = "https://private-token:secret@192.168.1.20:8767"
+        await self.open_account_menu()
         await self.page.locator("#admin-open").click()
         await self.page.locator("#host-setup-open").click()
         await expect(self.page.locator("#host-setup-name")).to_contain_text("<img src=x")

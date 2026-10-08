@@ -92,6 +92,24 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(.01)
         self.fail("Fake worker did not receive a turn")
 
+    async def open_account_menu(self, page=None):
+        page = page or self.page
+        await page.wait_for_function("""() => {
+          const expanded = mobileSidebar()
+            ? document.getElementById('workspace').classList.contains('sidebar-open')
+            : !state.sidebarCollapsed;
+          const sidebar = document.getElementById('sidebar');
+          return document.getElementById('sidebar-toggle').getAttribute('aria-expanded') === String(expanded)
+            && sidebar.inert === !expanded
+            && sidebar.getAttribute('aria-hidden') === String(!expanded);
+        }""")
+        if await page.locator("#sidebar-toggle").get_attribute("aria-expanded") == "false":
+            await page.locator("#sidebar-toggle").click()
+        menu = page.locator("#account-menu")
+        if not await menu.is_visible():
+            await page.locator("#account-menu-open").click()
+        await expect(menu).to_be_visible()
+
     async def open_admin_device(self, *, name=None, device_id=None):
         selector = f'.admin-device-summary[data-device-id="{device_id}"]' if device_id else ".admin-device-summary"
         summary = self.page.locator(selector)
@@ -296,6 +314,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(page.locator("#composer-area")).to_be_hidden()
         await expect(page.locator(".message.assistant .failure-title")).to_have_text("Response failed")
         await expect(page.locator(".message.assistant .retry-button")).to_be_hidden()
+        await self.open_account_menu(page)
         await page.locator("#admin-open").click()
         await expect(page.locator("#admin-view")).to_be_visible()
         await expect(page.locator(".admin-device-summary")).to_have_count(3)
@@ -359,6 +378,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
 
         page.on("dialog", accept_delete)
         await self.login(self.admin)
+        await self.open_account_menu(page)
         await page.locator("#admin-open").click()
         admin_card = await self.open_admin_device(name="Server .56")
         await expect(admin_card.get_by_role("button", name="Delete Server .56 and its data permanently")).to_be_hidden()
@@ -388,6 +408,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         page = self.page
         await self.login(self.admin)
 
+        await self.open_account_menu(page)
         await page.locator("#admin-open").click()
         await page.wait_for_function("() => new URL(location.href).searchParams.get('view') === 'admin'")
         await page.reload()
@@ -400,6 +421,7 @@ class LanBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(page.locator("#admin-device-title")).to_have_text("Client .57")
         await page.locator("#admin-device-close").click()
 
+        await self.open_account_menu(page)
         await page.locator("#my-usage-open").click()
         await page.wait_for_function("() => new URL(location.href).searchParams.get('panel') === 'usage'")
         await page.reload()
