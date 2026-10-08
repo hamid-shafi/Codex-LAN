@@ -3252,7 +3252,7 @@ h1, h2, h3, p { margin-top: 0; }
 .search-field input {
   padding-inline-end: 64px;
 }
-.quick-switcher-open {
+.shortcut-help-open {
   position: absolute;
   inset-inline-end: 6px;
   top: 50%;
@@ -3266,13 +3266,13 @@ h1, h2, h3, p { margin-top: 0; }
   background: color-mix(in srgb, var(--soft) 74%, transparent);
   cursor: pointer;
 }
-.quick-switcher-open:hover,
-.quick-switcher-open:focus-visible {
+.shortcut-help-open:hover,
+.shortcut-help-open:focus-visible {
   color: var(--text);
   border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
   background: var(--accent-wash);
 }
-.quick-switcher-open kbd,
+.shortcut-help-open kbd,
 .quick-switcher-footer kbd {
   border: 0;
   color: inherit;
@@ -3483,6 +3483,44 @@ dialog.quick-switcher::backdrop {
   text-align: center;
   box-shadow: 0 1px 0 color-mix(in srgb, var(--line) 75%, transparent);
 }
+/* CODEX: The keyboard guide follows each theme and remains readable on small screens. */
+.room-dialog.shortcut-help {
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.shortcut-help .dialog-heading { align-items: flex-start; gap: 12px; }
+.shortcut-help .dialog-heading h2 { margin: 0; }
+.shortcut-help .dialog-heading .icon-button { flex: 0 0 auto; }
+.shortcut-help > p { margin: 12px 0 20px; font-size: 13px; line-height: 1.6; }
+.shortcut-help-section + .shortcut-help-section { margin-top: 20px; }
+.shortcut-help-section h3 { margin: 0 0 8px; color: var(--text); font-size: 13px; font-weight: 700; }
+.shortcut-help-list { margin: 0; }
+.shortcut-help-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.shortcut-help-list dt { min-width: 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+.shortcut-help-list dd { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 5px; margin: 0; }
+.shortcut-help-list dd > span { color: var(--muted); font-size: 11px; }
+.shortcut-help-list kbd {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text);
+  background: var(--soft);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 var(--line);
+}
+.shortcut-help-note { margin: 9px 0 0; font-size: 12px; line-height: 1.6; }
 @keyframes quick-switcher-arrive {
   from { opacity: 0; transform: translateY(-7px) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -3492,7 +3530,10 @@ dialog.quick-switcher::backdrop {
   to { opacity: 1; transform: translateY(0); }
 }
 @media (max-width: 520px) {
-  .quick-switcher-open { min-width: 43px; }
+  .shortcut-help-open { min-width: 43px; }
+  .room-dialog.shortcut-help { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); padding: 18px 15px; }
+  .shortcut-help-list > div { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .shortcut-help-list dd { justify-content: flex-start; }
   dialog.quick-switcher { inset-block-start: 9px; width: calc(100vw - 16px); max-height: calc(100dvh - 18px); border-radius: 15px; }
   .quick-switcher-search { padding: 9px 10px; }
   .quick-switcher-search input { min-height: 39px; font-size: 16px; }

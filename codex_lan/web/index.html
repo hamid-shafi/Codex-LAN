@@ -75,7 +75,7 @@
     <aside id="sidebar" class="sidebar" aria-label="Rooms">
       <div class="sidebar-brand"><svg class="brand-mark" aria-hidden="true"><use href="#codex-brand"/></svg><div><span class="brand-name">Codex</span><span class="brand-caption">Shared workspace</span></div></div>
       <button id="new-room" class="button new-room" type="button"><span aria-hidden="true">＋</span> New room</button>
-      <div class="search-field"><label class="sr-only" for="room-search">Search rooms or people</label><input id="room-search" type="search" placeholder="Search rooms or people" autocomplete="off"><button id="quick-switcher-open" class="quick-switcher-open" type="button" aria-label="Open quick switcher" aria-keyshortcuts="Control+K Meta+K" title="Quick switcher · Ctrl+K"><kbd>Ctrl K</kbd></button></div>
+      <div class="search-field"><label class="sr-only" for="room-search">Search rooms or people</label><input id="room-search" type="search" placeholder="Search rooms or people" autocomplete="off"><button id="shortcut-help-open" class="shortcut-help-open" type="button" aria-label="Keyboard shortcuts" aria-haspopup="dialog" aria-controls="shortcut-help" aria-keyshortcuts="Control+/ Meta+/" title="Keyboard shortcuts · Ctrl+/ or Cmd+/"><kbd>Ctrl /</kbd></button></div>
       <div class="sidebar-section"><span>Rooms</span><span id="room-count">0</span></div>
       <div id="room-list" class="room-list" role="navigation" aria-label="Room list"></div>
       <div class="sidebar-bottom">
@@ -244,6 +244,38 @@
       </div>
       <div class="dialog-actions"><button id="browser-login-disable" class="button danger" type="button" aria-controls="browser-login-disable-confirm" aria-expanded="false" hidden>Disable</button><button id="browser-login-logout" class="button" type="button">Sign out</button><span class="flex-spacer"></span><button id="browser-login-cancel" class="button" type="button">Cancel</button><button id="browser-login-save" class="button primary" type="submit">Set up easy sign-in</button></div>
     </form>
+  </dialog>
+  <dialog id="shortcut-help" class="room-dialog shortcut-help" aria-labelledby="shortcut-help-title" aria-describedby="shortcut-help-description">
+    <div class="dialog-heading"><div><p class="eyebrow">KEYBOARD GUIDE</p><h2 id="shortcut-help-title">Keyboard shortcuts</h2></div><button id="shortcut-help-close" class="icon-button" type="button" aria-label="Close keyboard shortcuts" autofocus>×</button></div>
+    <p id="shortcut-help-description" class="muted">Use Ctrl or Cmd for navigation and sending. Navigation shortcuts work with any keyboard layout.</p>
+    <section class="shortcut-help-section" aria-labelledby="shortcut-workspace-title">
+      <h3 id="shortcut-workspace-title">Workspace</h3>
+      <dl class="shortcut-help-list">
+        <div><dt>Open or close this guide</dt><dd><kbd>Ctrl /</kbd><span>or</span><kbd>Cmd /</kbd></dd></div>
+        <div><dt>Open or close the quick switcher</dt><dd><kbd>Ctrl K</kbd><span>or</span><kbd>Cmd K</kbd></dd></div>
+        <div><dt>Navigate the quick switcher</dt><dd><kbd>↑</kbd><kbd>↓</kbd></dd></div>
+        <div><dt>Open the selected switcher result</dt><dd><kbd>Enter</kbd></dd></div>
+        <div><dt>Close a dialog or model picker</dt><dd><kbd>Esc</kbd></dd></div>
+      </dl>
+    </section>
+    <section class="shortcut-help-section" aria-labelledby="shortcut-message-title">
+      <h3 id="shortcut-message-title">Message composer</h3>
+      <dl class="shortcut-help-list">
+        <div><dt>Send a message</dt><dd><kbd>Ctrl Enter</kbd><span>or</span><kbd>Cmd Enter</kbd></dd></div>
+        <div><dt id="shortcut-send-description">Send with Double Enter enabled</dt><dd><kbd id="shortcut-send-key">Enter twice</kbd></dd></div>
+        <div><dt>Add a new line</dt><dd><kbd>Shift Enter</kbd></dd></div>
+      </dl>
+      <p class="shortcut-help-note muted">Double Enter to send requires two quick presses. Turn it off to send with one Enter. Send shortcuts apply while typing a message.</p>
+    </section>
+    <section class="shortcut-help-section" aria-labelledby="shortcut-controls-title">
+      <h3 id="shortcut-controls-title">Model and thinking</h3>
+      <dl class="shortcut-help-list">
+        <div><dt>Previous or next model</dt><dd><kbd>Ctrl Alt ↑</kbd><kbd>Ctrl Alt ↓</kbd></dd></div>
+        <div><dt>Increase thinking effort</dt><dd><kbd>Alt ↑</kbd></dd></div>
+        <div><dt>Decrease thinking effort</dt><dd><kbd>Alt ↓</kbd></dd></div>
+      </dl>
+      <p class="shortcut-help-note muted">Available in chat when the controls are enabled, including while typing a message. Other text fields and open dialogs keep their own keyboard controls.</p>
+    </section>
   </dialog>
   <dialog id="quick-switcher" class="quick-switcher" aria-labelledby="quick-switcher-title">
     <div class="quick-switcher-shell">

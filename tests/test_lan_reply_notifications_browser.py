@@ -99,6 +99,65 @@ class LanReplyNotificationsBrowserTests(unittest.IsolatedAsyncioTestCase):
         await self.page.evaluate("() => { document.hasFocus = () => true; window.dispatchEvent(new Event('focus')); }")
         self.assertTrue(await self.page.evaluate("replyNotifications[0].closed"))
 
+    async def check_quick_switcher_room_entry_closes_matching_alert(self, permission):
+        other = self.service.store.create_room(self.admin_id, "Another background room", "/work/other", "astra", "medium")
+        await self.prepare_notifications(permission)
+        self.finish_reply(self.background, "switcher-reply")
+        self.finish_reply(other, "other-switcher-reply")
+        await self.page.evaluate("refreshRooms()")
+        if permission == "granted":
+            self.assertEqual(await self.page.evaluate("replyNotifications.length"), 2)
+        else:
+            await expect(self.page.locator(".reply-notification")).to_have_count(2)
+        await self.page.keyboard.press("Control+k")
+        await expect(self.page.locator("#quick-switcher")).to_be_visible()
+        await self.page.locator("#quick-switcher-input").fill("Background work")
+        # Dialog focus restoration can lag behind the room-entry action.
+        await self.page.evaluate("() => { document.hasFocus = () => false; window.dispatchEvent(new Event('blur')); }")
+        seen_before = await self.page.evaluate("id => sidebarPreferences().seen[id]", self.background["id"])
+        await self.page.keyboard.press("Enter")
+        await expect(self.page.locator("#quick-switcher")).to_be_hidden()
+        await expect(self.page.locator("#room-title")).to_have_text("Background work")
+        await expect(self.page.locator("#message-input")).to_be_focused()
+        if permission == "granted":
+            self.assertTrue(await self.page.evaluate(
+                "replyNotifications.find(item => item.title === 'Reply ready · Background work').closed"
+            ))
+            self.assertFalse(await self.page.evaluate(
+                "replyNotifications.find(item => item.title === 'Reply ready · Another background room').closed"
+            ))
+        else:
+            await expect(self.page.locator(".reply-notification")).to_have_count(1)
+            await expect(self.page.locator(".reply-notification strong")).to_have_text("Reply ready · Another background room")
+        self.assertEqual(await self.page.evaluate("id => sidebarPreferences().seen[id]", self.background["id"]), seen_before)
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_quick_switcher_room_entry_closes_matching_desktop_alert(self):
+        await self.check_quick_switcher_room_entry_closes_matching_alert("granted")
+
+    async def test_quick_switcher_room_entry_closes_matching_in_app_alert(self):
+        await self.check_quick_switcher_room_entry_closes_matching_alert("denied")
+
+    async def test_unfocused_loaded_room_entry_dismisses_alert_but_keeps_read_and_future_alert_gates(self):
+        await self.prepare_notifications()
+        await self.page.evaluate("() => { document.hasFocus = () => false; window.dispatchEvent(new Event('blur')); }")
+        self.finish_reply(self.room, "unfocused-room-entry")
+        await self.page.evaluate("refreshRooms()")
+        self.assertEqual(await self.page.evaluate("replyNotifications.length"), 1)
+        self.assertFalse(await self.page.evaluate("replyNotifications[0].closed"))
+        seen_before = await self.page.evaluate("id => sidebarPreferences().seen[id]", self.room["id"])
+        await self.page.evaluate("id => selectRoom(id, {route:false})", self.room["id"])
+        self.assertTrue(await self.page.evaluate("replyNotifications[0].closed"))
+        self.assertEqual(await self.page.evaluate("id => sidebarPreferences().seen[id]", self.room["id"]), seen_before)
+        self.finish_reply(self.room, "later-unfocused-reply")
+        await self.page.evaluate("refreshRooms()")
+        self.assertEqual(await self.page.evaluate("replyNotifications.length"), 2)
+        self.assertFalse(await self.page.evaluate("replyNotifications[1].closed"))
+        await self.page.evaluate("refreshRooms()")
+        self.assertFalse(await self.page.evaluate("replyNotifications[1].closed"))
+        self.assertEqual(await self.page.evaluate("id => sidebarPreferences().seen[id]", self.room["id"]), seen_before)
+        self.assertFalse(self.errors, self.errors)
+
     async def test_in_app_reply_alert_survives_timeout_then_hides_on_room_focus(self):
         await self.prepare_notifications("denied")
         self.finish_reply(self.background, "persistent-fallback")

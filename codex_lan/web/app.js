@@ -1695,9 +1695,31 @@ function openQuickSwitcher() {
   return true;
 }
 
+let shortcutHelpReturnFocus = null;
+
+function openShortcutHelp() {
+  if (embeddedRoomId || !state.me || $("workspace").hidden) return false;
+  const dialog = $("shortcut-help");
+  if (dialog.open) { dialog.close(); return true; }
+  if (document.querySelector("dialog[open]")) return false;
+  window.CodexControls?.close(true);
+  shortcutHelpReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const doubleEnter = syncEnterPreference();
+  $("shortcut-send-key").textContent = doubleEnter ? "Enter twice" : "Enter";
+  $("shortcut-send-description").textContent = `Send with Double Enter ${doubleEnter ? "enabled" : "disabled"}`;
+  dialog.showModal();
+  requestAnimationFrame(() => { if (dialog.open) $("shortcut-help-close").focus({ preventScroll: true }); });
+  return true;
+}
+
 function handleQuickSwitcherKey(event) {
-  if (event.defaultPrevented || event.isComposing || event.repeat) return;
+  if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.repeat) return;
   // Bind the physical key so changing the keyboard layout does not disable navigation.
+  const helpKey = event.code ? event.code === "Slash" : event.key === "/";
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && helpKey) {
+    if (openShortcutHelp()) event.preventDefault();
+    return;
+  }
   const switcherKey = event.code ? event.code === "KeyK" : event.key?.toLowerCase() === "k";
   if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && switcherKey) {
     if ($("quick-switcher").open || !document.querySelector("dialog[open]")) {
@@ -1751,6 +1773,8 @@ async function selectRoom(id, { route = true } = {}) {
   const focusRevision = state.focusRevision;
   const key = idOf(id);
   if (!state.rooms.some((room) => idOf(room.id) === key)) return;
+  // Room entry dismisses its alert even before dialog focus is restored; read acknowledgement still requires focus.
+  closeReplyNotifications(key);
   rememberRoom(key);
   closeRouteDialogs();
   if (state.selected === key && state.view === "chat" && roomState(key).loaded) {
@@ -4392,6 +4416,30 @@ function toggleSidebar() {
   if (openedMobile) $("new-room").focus({ preventScroll: true });
 }
 
+function bindDialogBackdropDismissal() {
+  for (const dialog of document.querySelectorAll("dialog")) {
+    let outsidePress = null;
+    const isOutside = (event) => {
+      const bounds = dialog.getBoundingClientRect();
+      return event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom;
+    };
+    dialog.addEventListener("pointerdown", (event) => {
+      outsidePress = dialog.open && event.target === dialog && event.button === 0
+        && event.isPrimary && isOutside(event) ? event.pointerId : null;
+    });
+    dialog.addEventListener("pointercancel", () => { outsidePress = null; });
+    dialog.addEventListener("close", () => { outsidePress = null; });
+    dialog.addEventListener("click", (event) => {
+      // A drag from inside, or a click on dialog padding, is not a backdrop dismissal.
+      const dismiss = outsidePress !== null && dialog.open && event.target === dialog
+        && (event.pointerId === undefined || event.pointerId === outsidePress) && isOutside(event);
+      outsidePress = null;
+      if (dismiss) dialog.close();
+    });
+  }
+}
+
 function cycleSetting(event) {
   if (event.defaultPrevented || event.isComposing || event.repeat || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
   if (state.view !== "chat" || document.querySelector("dialog[open]")) return;
@@ -4417,6 +4465,7 @@ function cycleSetting(event) {
 }
 
 function bindEvents() {
+  bindDialogBackdropDismissal();
   window.CodexHostSetup?.init({ api, copyText, isActive: () => isAdmin() && state.view === "admin" && state.adminPanel === "host-setup" });
   document.addEventListener("focusin", () => { state.focusRevision += 1; }, true);
   $("toast-close").addEventListener("click", () => dismissToast());
@@ -4471,18 +4520,31 @@ function bindEvents() {
   $("read-only-copy-draft").addEventListener("click", (event) => copyText(roomState().draft, event.currentTarget));
   $("room-menu").addEventListener("click", () => openRoomDialog("edit"));
   $("room-search").addEventListener("input", renderRooms);
-  $("quick-switcher-open").addEventListener("click", openQuickSwitcher);
+  $("shortcut-help-open").addEventListener("click", openShortcutHelp);
+  $("shortcut-help-close").addEventListener("click", () => $("shortcut-help").close());
+  $("shortcut-help").addEventListener("close", () => {
+    // Preserve focus moved by a newer interaction while the close event was queued.
+    const dialog = $("shortcut-help");
+    if (dialog.open) return;
+    const target = shortcutHelpReturnFocus;
+    shortcutHelpReturnFocus = null;
+    const active = document.activeElement;
+    const needsFocus = !active || active === document.body || dialog.contains(active);
+    if (needsFocus && target?.isConnected && !target.matches(":disabled") && !document.querySelector("dialog[open]")) target.focus({ preventScroll: true });
+  });
   $("quick-switcher-close").addEventListener("click", () => $("quick-switcher").close());
   $("quick-switcher-input").addEventListener("input", () => renderQuickSwitcher({ reset: true }));
-  $("quick-switcher").addEventListener("click", (event) => { if (event.target === $("quick-switcher")) $("quick-switcher").close(); });
   $("quick-switcher").addEventListener("close", () => {
     // The close event is queued; a reopened dialog already owns a new search and focus target.
-    if ($("quick-switcher").open) return;
+    const dialog = $("quick-switcher");
+    if (dialog.open) return;
     $("quick-switcher-input").value = "";
     quickSwitcherItems = [];
     const target = quickSwitcherReturnFocus;
     quickSwitcherReturnFocus = null;
-    if (target?.isConnected) target.focus({ preventScroll: true });
+    const active = document.activeElement;
+    const needsFocus = !active || active === document.body || dialog.contains(active);
+    if (needsFocus && target?.isConnected && !target.matches(":disabled") && !document.querySelector("dialog[open]")) target.focus({ preventScroll: true });
   });
   $("room-form").addEventListener("submit", submitRoom);
   $("room-delete").addEventListener("click", () => deleteRoom());
@@ -4551,7 +4613,7 @@ function bindEvents() {
   $("sidebar-toggle").addEventListener("click", toggleSidebar);
   $("sidebar-scrim").addEventListener("click", () => { closeSidebar(); $("sidebar-toggle").focus({ preventScroll: true }); });
   window.matchMedia("(max-width: 720px)").addEventListener("change", closeSidebar);
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && mobileSidebar() && $("workspace").classList.contains("sidebar-open")) { closeSidebar(); $("sidebar-toggle").focus({ preventScroll: true }); } });
+  document.addEventListener("keydown", (event) => { if (!event.defaultPrevented && event.key === "Escape" && !document.querySelector("dialog[open]") && mobileSidebar() && $("workspace").classList.contains("sidebar-open")) { closeSidebar(); $("sidebar-toggle").focus({ preventScroll: true }); } });
   document.addEventListener("keydown", handleQuickSwitcherKey);
   document.addEventListener("keydown", cycleSetting);
   window.addEventListener("online", resumeServerConnection);
