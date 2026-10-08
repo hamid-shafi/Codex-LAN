@@ -1,6 +1,6 @@
 # Codex LAN
 
-**Start here:** [One-page overview](OVERVIEW.md) · [Development story](STORY.md).
+**Start here:** [One-page overview](docs/product/OVERVIEW.md) · [Development story](docs/product/STORY.md).
 
 **Share your Codex with your team at work.** Codex LAN turns one Linux host into
 a shared coding-assistant workspace for approved coworkers on a trusted office
@@ -66,7 +66,7 @@ a password or copy an authentication cache into chat.
 
 ```bash
 codex -c 'cli_auth_credentials_store="file"' login
-python3 install_lan_server.py --check
+python3 project.py host --check
 bash setup.sh
 ```
 
@@ -81,8 +81,8 @@ The screen shows prerequisites, service state, certificate fingerprint, download
 status, and safe next actions. Privileged firewall/OS changes still require local
 operating-system approval, not a password entered into this app.
 
-See [the complete setup guide](docs/SETUP.md), [laptop migration and private backups](docs/MIGRATION.md),
-and [the current architecture and Connector guide](LAN-RELEASES.md).
+See [the complete setup guide](docs/operations/SETUP.md), [laptop migration and private backups](docs/operations/MIGRATION.md),
+and [the current architecture and Connector guide](docs/operations/LAN-RELEASES.md).
 
 ## Trust and access
 
@@ -120,7 +120,7 @@ tokens, pairing material, TLS keys, bundles, and logs. OpenAI authentication sta
 in the local Codex credential store. Do not add any of these to the repository,
 even in a private GitHub repository or its history.
 
-Before publishing, follow [the publication checklist](docs/PUBLISHING.md) and run
+Before publishing, follow [the publication checklist](docs/operations/PUBLISHING.md) and run
 the repository's publication check. Its source-only export excludes `.git` and
 runtime state. Private history snapshots are saved separately with mode `0600`;
 they are not source exports and should be transferred only by a private channel.
@@ -132,15 +132,23 @@ own licenses; see [the third-party inventory](THIRD_PARTY_NOTICES.md).
 
 ```bash
 python3 -m venv .venv-lan
-.venv-lan/bin/python -m pip install -r requirements-lan.txt
-PYTHONPATH=.:tests .venv-lan/bin/python -m unittest discover -s tests -p 'test_lan_*.py'
+.venv-lan/bin/python -m pip install -r apps/workspace/requirements.txt
+.venv-lan/bin/python project.py test discover -s development/tests -p 'test_lan_*.py'
 ```
 
 Tests use temporary state and loopback listeners. A running server should be
 updated through its guarded deployment path after active prompts finish, not by
-blindly restarting it. See [release procedures](LAN-RELEASES.md).
+blindly restarting it. See [release procedures](docs/operations/LAN-RELEASES.md).
 
 The older GTK desktop client remains available as an independent optional app:
-`python3 app.py --check`, `bash run.sh`, and `bash install.sh`. Its private legacy
+`python3 project.py desktop --check`, `bash apps/desktop/run.sh`, and
+`bash apps/desktop/install.sh`. Its private legacy
 history directory is `~/.local/share/hamsohbat-codex`; it is not included in a clean
 LAN installation unless you explicitly request the existing desktop-history import.
+
+The source tree groups the workspace and desktop products under `apps/`,
+installation and release workflows under `setup/`, documentation under `docs/`,
+and developer tests and tools under `development/`. Run project commands from
+the checkout root with `project.py`; it supplies the source import paths.
+See [the repository guide](docs/architecture/REPOSITORY.md) for the complete layout
+and the distinction between source folders, installed payloads, and private state.

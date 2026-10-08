@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# CODEX: Bootstrap the per-user host from this checkout, then open the browser setup screen.
+# Keep the first-run entry point simple; implementation lives with host setup.
 set -euo pipefail
-codex_setup_source="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-if ! command -v python3 >/dev/null 2>&1; then
-    printf '%s\n' 'Python 3.10 or newer is required. Install Python and its venv package from your Linux software manager.' >&2
-    exit 1
-fi
-exec python3 "$codex_setup_source/install_lan_server.py" --start --open "$@"
+project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec bash "$project_dir/setup/host/setup.sh" "$@"

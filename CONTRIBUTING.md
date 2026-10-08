@@ -8,7 +8,7 @@ The installation and network setup are documented in [README.md](README.md).
 Before submitting changes:
 
 ```bash
-python3 tools/check_publication.py
+python3 project.py check
 git diff --check
 ```
 
@@ -17,6 +17,11 @@ tests also need Playwright and Chromium. Keep tests offline where practical,
 using temporary directories and fake account/executor fixtures. Desktop GTK
 tests require the distribution's GTK/PyGObject packages. Do not use a real
 provider login or live user conversations as fixtures.
+
+The [repository guide](docs/architecture/REPOSITORY.md) explains the product-first
+source layout. Use `python3 project.py test` for full unittest discovery, or
+`python3 project.py test test_lan_server -q` for a specific test module. The runner
+sets the source import paths for both apps, setup commands, and development tools.
 
 Backend updates must wait for active prompts to finish. Use the documented
 deferred deployment tool instead of restarting a service that owns live work.

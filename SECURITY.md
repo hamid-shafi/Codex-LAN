@@ -9,8 +9,8 @@ outside the checkout in the user's local application-data directory.
 Before making a source repository public, run:
 
 ```bash
-python3 tools/check_publication.py
-python3 tools/check_publication.py --history
+python3 project.py check
+python3 project.py check --history
 ```
 
 The first command scans the current tracked source and non-ignored new files.
@@ -34,7 +34,7 @@ If local history contains personal paths, machine addresses, author email, or
 private files, keep that original checkout private and export reviewed source:
 
 ```bash
-python3 tools/check_publication.py --export ../codex-lan-public
+python3 project.py check --export ../codex-lan-public
 ```
 
 The export creates a new directory without `.git`, ignored runtime files, or
@@ -85,7 +85,7 @@ issue. Include affected versions and a minimal synthetic reproduction.
 No project-wide license has been selected yet. Public visibility alone does not
 grant redistribution rights. Choose a project license before advertising this
 as reusable open-source software. The bundled KaTeX JavaScript is MIT-licensed
-(`codex_lan/web/KaTeX-LICENSE.txt`); the unmodified Vazir font uses SIL OFL 1.1
-(`codex_lan/web/Vazir-OFL.txt`, provenance in `Vazir-FONT.md`). Keep these notices
+(`apps/workspace/codex_lan/web/KaTeX-LICENSE.txt`); the unmodified Vazir font uses SIL OFL 1.1
+(`apps/workspace/codex_lan/web/Vazir-OFL.txt`, provenance in `Vazir-FONT.md`). Keep these notices
 in distributions. Codex executables and Python dependencies are build inputs,
 not tracked source; review their own terms when distributing connector bundles.
