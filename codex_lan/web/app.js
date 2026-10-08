@@ -18,7 +18,39 @@ const themes = ["light", "dark", "midnight", "chatgpt", "torte", "cosmic", "auro
 const themeLabels = { chatgpt: "ChatGPT Black", torte: "Vim Torte" };
 const spaceThemes = new Set(["cosmic", "aurora", "ember", "velvet"]);
 const formatNumber = new Intl.NumberFormat("en-US");
-const persianPattern = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/u;
+// Assigned Unicode 17.0.0 Bidi_Class=R/AL, not language or whole-script ranges.
+// Source: https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedBidiClass.txt
+// Regenerate offline with tools/generate_rtl_ranges.py and a local UCD file.
+// BEGIN GENERATED STRONG RTL RANGES
+const strongRtlRanges = [
+  [0x5be, 0x5be], [0x5c0, 0x5c0], [0x5c3, 0x5c3], [0x5c6, 0x5c6], [0x5d0, 0x5ea], [0x5ef, 0x5f4],
+  [0x608, 0x608], [0x60b, 0x60b], [0x60d, 0x60d], [0x61b, 0x64a], [0x66d, 0x66f], [0x671, 0x6d5],
+  [0x6e5, 0x6e6], [0x6ee, 0x6ef], [0x6fa, 0x70d], [0x70f, 0x710], [0x712, 0x72f], [0x74d, 0x7a5],
+  [0x7b1, 0x7b1], [0x7c0, 0x7ea], [0x7f4, 0x7f5], [0x7fa, 0x7fa], [0x7fe, 0x815], [0x81a, 0x81a],
+  [0x824, 0x824], [0x828, 0x828], [0x830, 0x83e], [0x840, 0x858], [0x85e, 0x85e], [0x860, 0x86a],
+  [0x870, 0x88f], [0x8a0, 0x8c9], [0x200f, 0x200f], [0xfb1d, 0xfb1d], [0xfb1f, 0xfb28], [0xfb2a, 0xfb36],
+  [0xfb38, 0xfb3c], [0xfb3e, 0xfb3e], [0xfb40, 0xfb41], [0xfb43, 0xfb44], [0xfb46, 0xfbc2], [0xfbd3, 0xfd3d],
+  [0xfd50, 0xfd8f], [0xfd92, 0xfdc7], [0xfdf0, 0xfdfc], [0xfe70, 0xfe74], [0xfe76, 0xfefc], [0x10800, 0x10805],
+  [0x10808, 0x10808], [0x1080a, 0x10835], [0x10837, 0x10838], [0x1083c, 0x1083c], [0x1083f, 0x10855], [0x10857, 0x1089e],
+  [0x108a7, 0x108af], [0x108e0, 0x108f2], [0x108f4, 0x108f5], [0x108fb, 0x1091b], [0x10920, 0x10939], [0x1093f, 0x10959],
+  [0x10980, 0x109b7], [0x109bc, 0x109cf], [0x109d2, 0x10a00], [0x10a10, 0x10a13], [0x10a15, 0x10a17], [0x10a19, 0x10a35],
+  [0x10a40, 0x10a48], [0x10a50, 0x10a58], [0x10a60, 0x10a9f], [0x10ac0, 0x10ae4], [0x10aeb, 0x10af6], [0x10b00, 0x10b35],
+  [0x10b40, 0x10b55], [0x10b58, 0x10b72], [0x10b78, 0x10b91], [0x10b99, 0x10b9c], [0x10ba9, 0x10baf], [0x10c00, 0x10c48],
+  [0x10c80, 0x10cb2], [0x10cc0, 0x10cf2], [0x10cfa, 0x10d23], [0x10d4a, 0x10d65], [0x10d6f, 0x10d85], [0x10d8e, 0x10d8f],
+  [0x10e80, 0x10ea9], [0x10ead, 0x10ead], [0x10eb0, 0x10eb1], [0x10ec2, 0x10ec7], [0x10f00, 0x10f27], [0x10f30, 0x10f45],
+  [0x10f51, 0x10f59], [0x10f70, 0x10f81], [0x10f86, 0x10f89], [0x10fb0, 0x10fcb], [0x10fe0, 0x10ff6], [0x1e800, 0x1e8c4],
+  [0x1e8c7, 0x1e8cf], [0x1e900, 0x1e943], [0x1e94b, 0x1e94b], [0x1e950, 0x1e959], [0x1e95e, 0x1e95f], [0x1ec71, 0x1ecb4],
+  [0x1ed01, 0x1ed3d], [0x1ee00, 0x1ee03], [0x1ee05, 0x1ee1f], [0x1ee21, 0x1ee22], [0x1ee24, 0x1ee24], [0x1ee27, 0x1ee27],
+  [0x1ee29, 0x1ee32], [0x1ee34, 0x1ee37], [0x1ee39, 0x1ee39], [0x1ee3b, 0x1ee3b], [0x1ee42, 0x1ee42], [0x1ee47, 0x1ee47],
+  [0x1ee49, 0x1ee49], [0x1ee4b, 0x1ee4b], [0x1ee4d, 0x1ee4f], [0x1ee51, 0x1ee52], [0x1ee54, 0x1ee54], [0x1ee57, 0x1ee57],
+  [0x1ee59, 0x1ee59], [0x1ee5b, 0x1ee5b], [0x1ee5d, 0x1ee5d], [0x1ee5f, 0x1ee5f], [0x1ee61, 0x1ee62], [0x1ee64, 0x1ee64],
+  [0x1ee67, 0x1ee6a], [0x1ee6c, 0x1ee72], [0x1ee74, 0x1ee77], [0x1ee79, 0x1ee7c], [0x1ee7e, 0x1ee7e], [0x1ee80, 0x1ee89],
+  [0x1ee8b, 0x1ee9b], [0x1eea1, 0x1eea3], [0x1eea5, 0x1eea9], [0x1eeab, 0x1eebb],
+];
+// END GENERATED STRONG RTL RANGES
+const strongRtlPattern = new RegExp("[" + strongRtlRanges.map(([start, end]) =>
+  start === end ? String.fromCodePoint(start) : `${String.fromCodePoint(start)}-${String.fromCodePoint(end)}`
+).join("") + "]", "u");
 const browserLoginNameKey = "codex-lan-browser-login-name";
 const easySignInOfferPrefix = "codex-lan-easy-signin-offer:";
 const roomDraftPrefix = "codex-lan-draft:";
@@ -33,7 +65,8 @@ function element(tag, className, text) {
   return node;
 }
 
-function direction(text) { return persianPattern.test(String(text || "")) ? "rtl" : "ltr"; }
+// Keep mixed identifier + RTL prose readable; neutral marks and Arabic digits alone do not select RTL.
+function direction(text) { return strongRtlPattern.test(String(text || "")) ? "rtl" : "ltr"; }
 function idOf(value) { return String(value ?? ""); }
 function selectedRoom() { return state.rooms.find((room) => idOf(room.id) === state.selected); }
 function isAdmin() { return state.me?.role === "admin"; }
@@ -1664,7 +1697,9 @@ function openQuickSwitcher() {
 
 function handleQuickSwitcherKey(event) {
   if (event.defaultPrevented || event.isComposing || event.repeat) return;
-  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLocaleLowerCase() === "k") {
+  // Bind the physical key so changing the keyboard layout does not disable navigation.
+  const switcherKey = event.code ? event.code === "KeyK" : event.key?.toLowerCase() === "k";
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && switcherKey) {
     if ($("quick-switcher").open || !document.querySelector("dialog[open]")) {
       event.preventDefault();
       openQuickSwitcher();
@@ -4441,6 +4476,8 @@ function bindEvents() {
   $("quick-switcher-input").addEventListener("input", () => renderQuickSwitcher({ reset: true }));
   $("quick-switcher").addEventListener("click", (event) => { if (event.target === $("quick-switcher")) $("quick-switcher").close(); });
   $("quick-switcher").addEventListener("close", () => {
+    // The close event is queued; a reopened dialog already owns a new search and focus target.
+    if ($("quick-switcher").open) return;
     $("quick-switcher-input").value = "";
     quickSwitcherItems = [];
     const target = quickSwitcherReturnFocus;

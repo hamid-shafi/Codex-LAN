@@ -11,6 +11,7 @@ import re
 import sys
 import tempfile
 import time
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -42,7 +43,6 @@ APP_DIR = Path(__file__).resolve().parent
 ICON_PATH = APP_DIR / "assets" / "codex.svg"
 DEFAULT_CWD = str(Path.home())
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
-COMPOSER_RTL_RE = re.compile(r"[\u0590-\u08ff]")
 COMPOSER_RTL_MARK = "\u200f"
 COMPOSER_HINT = "Press Enter twice to send • Shift+Enter for a new line • Ctrl+V to paste an image"
 SEND_ENTER_KEYS = (
@@ -629,21 +629,23 @@ def update_turn_token_usage(
 
 
 def composer_is_rtl(text: str) -> bool:
-    """Prefer RTL for an empty or non-ASCII draft.
+    """Prefer RTL for an empty draft or one containing strong RTL characters.
 
     User prompts commonly begin with a technical identifier such as ``Spark``
-    and continue in Persian. First-strong direction detection misclassifies
-    that entire draft as LTR, so the composer intentionally treats a
-    non-ASCII draft as RTL. The empty composer is RTL by default because GDK's
-    keymap direction can report LTR while the active desktop layout is Persian.
+    and continue in an RTL language. Preserve that deliberate composer policy
+    without mistaking accented Latin, Greek, CJK text, or emoji for RTL. The
+    empty composer retains its RTL preference because the desktop keymap may
+    not report an active RTL layout reliably.
     """
     value = text or ""
-    return not value.strip() or not value.isascii()
+    return not value.strip() or any(
+        unicodedata.bidirectional(character) in {"R", "AL"}
+        for character in value
+    )
 
 
 def composer_paragraph_is_rtl(text: str) -> bool:
-    value = text or ""
-    return not value.strip() or not value.isascii()
+    return composer_is_rtl(text)
 
 
 def conversation_markdown(room: Dict[str, Any], messages: List[Dict[str, Any]]) -> str:
@@ -3918,7 +3920,7 @@ class MainWindow(Gtk.ApplicationWindow):
         non_whitespace = 0
         generated_marker_count = 0
         has_newline = False
-        has_non_ascii = False
+        has_rtl = False
         iterator = start.copy()
         while iterator.compare(end) < 0:
             character = iterator.get_char()
@@ -3930,15 +3932,15 @@ class MainWindow(Gtk.ApplicationWindow):
                     non_whitespace += 1
                 if character == "\n":
                     has_newline = True
-                if not character.isascii():
-                    has_non_ascii = True
+                if unicodedata.bidirectional(character) in {"R", "AL"}:
+                    has_rtl = True
             iterator.forward_char()
         return (
             user_count,
             non_whitespace,
             generated_marker_count,
             has_newline,
-            has_non_ascii,
+            has_rtl,
         )
 
     def _on_composer_insert_text(
@@ -3982,7 +3984,7 @@ class MainWindow(Gtk.ApplicationWindow):
     ) -> None:
         if getattr(self, "_syncing_composer_direction", False):
             return
-        user_count, non_whitespace, marker_count, has_newline, has_non_ascii = (
+        user_count, non_whitespace, marker_count, has_newline, has_rtl = (
             self._composer_range_counts(text_buffer, start, end)
         )
         start_mark = text_buffer.create_mark(None, start, True)
@@ -4006,11 +4008,11 @@ class MainWindow(Gtk.ApplicationWindow):
                 "mode": "delete",
                 "inserted_text": "",
                 "line_was_empty": False,
-                # Deleting ASCII text cannot change a nonempty line's
-                # direction. Avoid rescanning a large draft for a routine
-                # Backspace; inspect the resulting line only when a direction
-                # marker, newline, or non-ASCII character was removed.
-                "force_scan": bool(marker_count) or has_newline or has_non_ascii,
+                # Removing text without strong RTL characters does not change
+                # a nonempty line's direction. Avoid rescanning a large draft
+                # for routine Backspace; inspect the line only when a direction
+                # marker, newline, or strong RTL character was removed.
+                "force_scan": bool(marker_count) or has_newline or has_rtl,
             }
         )
 
@@ -4020,7 +4022,7 @@ class MainWindow(Gtk.ApplicationWindow):
         start, end = self._composer_line_bounds(text_buffer, line)
         markers: List[Gtk.TextIter] = []
         has_text = False
-        has_non_ascii = False
+        has_rtl = False
         has_non_whitespace = False
         iterator = start.copy()
         while iterator.compare(end) < 0:
@@ -4029,10 +4031,10 @@ class MainWindow(Gtk.ApplicationWindow):
                 markers.append(iterator.copy())
             else:
                 has_text = True
-                has_non_ascii = has_non_ascii or not character.isascii()
+                has_rtl = has_rtl or unicodedata.bidirectional(character) in {"R", "AL"}
                 has_non_whitespace = has_non_whitespace or not character.isspace()
             iterator.forward_char()
-        return (not has_text or not has_non_whitespace or has_non_ascii), markers
+        return (not has_text or not has_non_whitespace or has_rtl), markers
 
     def _delete_composer_markers(
         self, text_buffer: Gtk.TextBuffer, markers: List[Gtk.TextIter]
@@ -4082,7 +4084,10 @@ class MainWindow(Gtk.ApplicationWindow):
                 elif markers:
                     rtl = True
                 else:
-                    rtl = not str(job.get("inserted_text") or "").isascii()
+                    rtl = any(
+                        unicodedata.bidirectional(character) in {"R", "AL"}
+                        for character in str(job.get("inserted_text") or "")
+                    )
             else:
                 rtl = bool(markers) or not self._composer_line_has_user_content(
                     text_buffer, start
@@ -4393,8 +4398,8 @@ class MainWindow(Gtk.ApplicationWindow):
                         text_buffer.end_user_action()
                     return True
         # Choose alignment before GTK paints the first character.  This avoids
-        # the visible left-to-right flash when a Persian draft starts while an
-        # English keyboard layout had been active moments earlier.
+        # the visible left-to-right flash when an RTL draft starts while an
+        # LTR keyboard layout had been active moments earlier.
         composer_char_count = getattr(self, "_composer_user_char_count", None)
         composer_is_empty = (
             not composer_char_count

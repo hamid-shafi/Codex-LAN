@@ -11,7 +11,44 @@ gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
-from app import COMPOSER_RTL_MARK, MainWindow  # noqa: E402
+from app import (  # noqa: E402
+    COMPOSER_RTL_MARK,
+    MainWindow,
+    composer_is_rtl,
+    composer_paragraph_is_rtl,
+)
+
+
+RTL_SAMPLES = {
+    "Persian": "سلام دنیا",
+    "Arabic": "مرحبا بالعالم",
+    "Hebrew": "שלום עולם",
+    "Urdu": "اردو زبان",
+    "Syriac": "\u0710\u0712\u0713 \u0715\u0717\u0718",
+    "Thaana": "\u0780\u07a6\u0781 \u0782\u07a7\u0783",
+    "NKo": "\u07ca\u07cb\u07cc \u07cd\u07ce\u07cf",
+    "Adlam": "\U0001e900\U0001e922 \U0001e923\U0001e924",
+}
+
+
+class ComposerDirectionHelperTests(unittest.TestCase):
+    def test_rtl_scripts_work_after_a_technical_prefix(self) -> None:
+        for language, text in RTL_SAMPLES.items():
+            with self.subTest(language=language):
+                self.assertTrue(composer_is_rtl(f"Spark {text}"))
+                self.assertTrue(composer_paragraph_is_rtl(f"Spark {text}"))
+
+    def test_non_ascii_ltr_text_and_neutral_symbols_do_not_flip_direction(self) -> None:
+        for text in ["Café déjà vu", "Ελληνικά", "中文", "日本語", "हिन्दी", "👋 🌍", "١٢٣"]:
+            with self.subTest(text=text):
+                self.assertFalse(composer_is_rtl(text))
+                self.assertFalse(composer_paragraph_is_rtl(text))
+
+    def test_empty_paragraph_keeps_its_deliberate_rtl_default(self) -> None:
+        for text in ["", " ", "\n\t"]:
+            with self.subTest(text=text):
+                self.assertTrue(composer_is_rtl(text))
+                self.assertTrue(composer_paragraph_is_rtl(text))
 
 
 def drain_events() -> None:
@@ -188,6 +225,56 @@ class ComposerDirectionTests(unittest.TestCase):
             composer.input_view.get_allocation().width * 0.2,
         )
         window.destroy()
+
+    def test_all_rtl_scripts_use_markers_without_changing_sent_text(self) -> None:
+        for language, text in RTL_SAMPLES.items():
+            with self.subTest(language=language):
+                composer = ComposerHarness()
+                draft = f"Spark {text}"
+                text_buffer = composer.input_view.get_buffer()
+                text_buffer.set_text(draft)
+                drain_events()
+                self.assertEqual(composer._input_text(), draft)
+                self.assertEqual(composer.input_view.get_direction(), Gtk.TextDirection.RTL)
+                self.assertEqual(composer._composer_generated_marker_count, 1)
+
+    def test_non_ascii_ltr_paragraphs_do_not_get_generated_markers(self) -> None:
+        composer = ComposerHarness()
+        for draft in ["Café déjà vu", "Ελληνικά", "中文", "日本語", "👋 🌍"]:
+            with self.subTest(draft=draft):
+                composer.input_view.get_buffer().set_text(draft)
+                drain_events()
+                self.assertEqual(composer._input_text(), draft)
+                self.assertEqual(composer.input_view.get_direction(), Gtk.TextDirection.LTR)
+                self.assertEqual(composer._composer_generated_marker_count, 0)
+
+    def test_inserting_ltr_unicode_and_spaces_into_long_line_keeps_ltr(self) -> None:
+        composer = ComposerHarness()
+        text_buffer = composer.input_view.get_buffer()
+        text_buffer.set_text("x" * 1000)
+        drain_events()
+        for inserted in [" ", "é", "中", "👋"]:
+            with self.subTest(inserted=inserted):
+                text_buffer.insert(text_buffer.get_end_iter(), inserted)
+                drain_events()
+                self.assertEqual(composer.input_view.get_direction(), Gtk.TextDirection.LTR)
+                self.assertEqual(composer._composer_generated_marker_count, 0)
+
+    def test_deleting_last_rtl_character_from_long_line_restores_ltr(self) -> None:
+        composer = ComposerHarness()
+        text_buffer = composer.input_view.get_buffer()
+        draft = "x" * 1000
+        text_buffer.set_text(draft + "\U0001e900")
+        drain_events()
+        self.assertEqual(composer.input_view.get_direction(), Gtk.TextDirection.RTL)
+        end = text_buffer.get_end_iter()
+        previous = end.copy()
+        previous.backward_char()
+        text_buffer.delete(previous, end)
+        drain_events()
+        self.assertEqual(composer._input_text(), draft)
+        self.assertEqual(composer.input_view.get_direction(), Gtk.TextDirection.LTR)
+        self.assertEqual(composer._composer_generated_marker_count, 0)
 
     def test_large_multiline_draft_is_bounded_and_english_lines_stay_left(self) -> None:
         composer = ComposerHarness()

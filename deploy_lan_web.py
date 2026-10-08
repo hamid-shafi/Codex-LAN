@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 
-FONT_LICENSE_NAMES = {"OFL.txt", "LICENSE.txt", "Vazir-LICENSE.txt", "Vazir-OFL.txt", "Vazir-FONT.md", "KaTeX-LICENSE.txt"}
+FONT_LICENSE_NAMES = {"OFL.txt", "LICENSE.txt", "Vazir-LICENSE.txt", "Vazir-OFL.txt", "Vazir-FONT.md", "KaTeX-LICENSE.txt", "Unicode-LICENSE.txt"}
 
 
 def read_assets(source):

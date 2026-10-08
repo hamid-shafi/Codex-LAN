@@ -22,4 +22,4 @@ jobs:
       - run: python3 -m unittest discover -s tests -p test_publication_tools.py -v
       - run: python3 -m pip install -r requirements-lan.txt
       - run: PYTHONPATH=.:tests python3 -m unittest test_lan_setup_bootstrap test_lan_host_setup test_lan_https test_lan_https_server -q
-      - run: PYTHONPATH=.:tests python3 -m unittest test_lan_server test_lan_store test_lan_file_attachments test_lan_client_access -q
+      - run: PYTHONPATH=.:tests python3 -m unittest test_lan_server test_lan_store test_lan_file_attachments test_lan_client_access test_lan_rtl -q

@@ -30,18 +30,11 @@ except (ImportError, ValueError):  # pragma: no cover - depends on Linux image
 
 
 FENCE_RE = re.compile(r"^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
-RTL_RE = re.compile(r"[\u0590-\u08ff]")
-LTR_RE = re.compile(r"[A-Za-z]")
-RTL_RUN_RE = re.compile(r"[\u0590-\u08ff]+")
-RTL_WORD_RE = re.compile(
-    r"[\u0590-\u08ff]+(?:[\u200c\u200d][\u0590-\u08ff]+)*"
-)
-LTR_RUN_RE = re.compile(r"[A-Za-z]+")
 TECHNICAL_RUN_RE = re.compile(
-    r"(?<![\w\u0590-\u08ff])"
+    r"(?<!\w)"
     r"([A-Za-z0-9][A-Za-z0-9_./:@#+=<>%&?-]*"
     r"(?:[ \t]+[A-Za-z0-9][A-Za-z0-9_./:@#+=<>%&?-]*)*)"
-    r"(?![\w\u0590-\u08ff])"
+    r"(?!\w)"
 )
 BARE_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
 INLINE_CODE_DIRECTION_RE = re.compile(r"`+[^`\n]*`+")
@@ -71,13 +64,47 @@ def _xml_safe(value: str) -> str:
 
 def is_rtl(text: str) -> bool:
     """Return the direction of the first strong character in *text*."""
-    rtl = RTL_RE.search(text or "")
-    ltr = LTR_RE.search(text or "")
-    if rtl is None:
-        return False
-    if ltr is None:
-        return True
-    return rtl.start() < ltr.start()
+    for character in text or "":
+        direction = unicodedata.bidirectional(character)
+        if direction in {"R", "AL"}:
+            return True
+        if direction == "L":
+            return False
+    return False
+
+
+def _directional_word_lengths(text: str) -> Tuple[List[int], List[int]]:
+    """Count lexical runs by Unicode direction, not a particular script block.
+
+    Combining marks and joiners stay inside their word so accented or joined
+    spelling does not manufacture extra votes for either reading direction.
+    """
+    rtl_words: List[int] = []
+    ltr_words: List[int] = []
+    previous = ""
+    for character in text:
+        direction = unicodedata.bidirectional(character)
+        side = ""
+        if character.isalpha():
+            if direction in {"R", "AL"}:
+                side = "rtl"
+            elif direction == "L":
+                side = "ltr"
+        if side:
+            words = rtl_words if side == "rtl" else ltr_words
+            if side == previous:
+                words[-1] += 1
+            else:
+                words.append(1)
+            previous = side
+        elif (
+            character in {"\u200c", "\u200d"}
+            or unicodedata.category(character).startswith("M")
+        ):
+            continue
+        else:
+            previous = ""
+    return rtl_words, ltr_words
 
 
 def content_prefers_rtl(text: str) -> bool:
@@ -85,9 +112,9 @@ def content_prefers_rtl(text: str) -> bool:
 
     First-strong direction is right for monolingual text, but chat messages
     frequently start with a Latin product/command name and then continue in
-    Persian. Treat that as RTL only when the Persian continuation has at
-    least two lexical runs and is substantial relative to the Latin prose.
-    This keeps an otherwise English sentence containing one Persian term LTR.
+    an RTL language. Treat that as RTL only when the continuation has at
+    least two lexical runs and is substantial relative to the LTR prose.
+    This keeps an otherwise LTR sentence containing one RTL term LTR.
 
     Inline code, link destinations, and bare URLs are excluded from the vote:
     their technical spelling must not decide the surrounding prose direction.
@@ -99,24 +126,19 @@ def content_prefers_rtl(text: str) -> bool:
     if is_rtl(sample):
         return True
 
-    rtl_words = RTL_WORD_RE.findall(sample)
+    rtl_words, ltr_words = _directional_word_lengths(sample)
     if len(rtl_words) < 2:
         return False
-    ltr_words = LTR_RUN_RE.findall(sample)
     if not ltr_words:
         return True
 
-    # Persian supplying at least half of the lexical runs clearly establishes
-    # the paragraph frame (for example ``Spark این ادامه فارسی است``). For a
-    # slightly more fragmented technical prefix, require three Persian runs
-    # and at least half as many RTL letters as Latin letters.
+    # RTL text supplying at least half of the lexical runs establishes the
+    # paragraph frame. For a fragmented technical prefix, require three RTL
+    # runs and at least half as many RTL letters as LTR letters.
     if len(rtl_words) >= len(ltr_words):
         return True
-    rtl_letters = sum(
-        len(word.replace("\u200c", "").replace("\u200d", ""))
-        for word in rtl_words
-    )
-    ltr_letters = sum(len(word) for word in ltr_words)
+    rtl_letters = sum(rtl_words)
+    ltr_letters = sum(ltr_words)
     return len(rtl_words) >= 3 and rtl_letters * 2 >= ltr_letters
 
 
@@ -582,15 +604,14 @@ def _message_is_rtl(blocks: Sequence[Tuple[str, str, str]], prefer_rtl: bool) ->
     sample = "\n".join(content for kind, _language, content in blocks if kind != "code")
     sample = re.sub(r"`+[^`]*`+", " ", sample)
     sample = BARE_URL_RE.sub(" ", sample)
-    rtl_runs = RTL_RUN_RE.findall(sample)
-    ltr_runs = LTR_RUN_RE.findall(sample)
+    rtl_runs, ltr_runs = _directional_word_lengths(sample)
     if not rtl_runs:
         return prefer_rtl and not ltr_runs
     if not ltr_runs:
         return True
     if is_rtl(sample):
         return True
-    if len(rtl_runs) >= 2 and sum(map(len, rtl_runs)) >= 4:
+    if len(rtl_runs) >= 2 and sum(rtl_runs) >= 4:
         return True
     return len(rtl_runs) > len(ltr_runs)
 
@@ -2086,7 +2107,7 @@ class MarkdownView(Gtk.Box):
         label.set_width_chars(1)
         label.set_max_width_chars(max_width_chars)
         # Gtk mirrors the xalign coordinate for an RTL widget.  Using 1.0 here
-        # therefore produces a negative layout offset and draws short Persian
+        # therefore produces a negative layout offset and draws short RTL
         # lines at the *left* edge.  Anchor the full-width Pango layout at the
         # physical left; Pango.Alignment.RIGHT performs the visible RTL align.
         label.set_xalign(0.0)
@@ -2094,7 +2115,7 @@ class MarkdownView(Gtk.Box):
         label.set_yalign(0.0)
         label.set_halign(Gtk.Align.FILL)
         # A vertical Gtk.Box otherwise gives short lines only their natural
-        # width, which visually pins Persian bullets/paragraphs to the left.
+        # width, which visually pins RTL bullets/paragraphs to the left.
         # Expanding the label makes xalign/justify apply to the whole message.
         label.set_hexpand(True)
 

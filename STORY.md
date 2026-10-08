@@ -73,6 +73,8 @@ The persistence requirements were Hamid's idea. Codex's contribution included th
 
 Hamid treated Persian rendering as a core product requirement, not a cosmetic translation task.
 
+That original use case is a starting point, not a language restriction. Direction handling now uses Unicode bidirectional properties for RTL scripts generally, including Hebrew and supplementary-plane scripts, instead of a Persian-only character range. Non-Latin LTR text stays LTR, and browser shortcuts such as `Ctrl+K` survive keyboard-layout changes. The interface and developer comments remain English; multilingual rendering does not claim that every interface label has been translated.
+
 That meant preserving natural mixed Persian/English text, making selection work across prose and code, bundling Vazir locally, and keeping code readable in its own direction and font. Markdown, tables, code blocks, and rendered mathematics needed to coexist without exposing raw formatting syntax where a readable result was expected.
 
 The composer was refined through repeated screenshots: cramped controls, overlapping read-only labels, clipped “Standard” text, excessive headers, and awkward split-pane layouts were all challenged. Reply remained a simple message action; side-thread controls moved out of the way instead of crowding every header.

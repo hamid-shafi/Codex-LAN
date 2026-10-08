@@ -16,7 +16,7 @@ Product vision and direction: **Hamid**. Implementation and engineering collabor
 - **Keep the trail.** Saved drafts, durable public Progress logs, tool Activity, and available Prepared context—not hidden reasoning.
 - **Usage with context.** Per-response token reports, estimated account-share usage, and a dashboard for the pool of finite allocations.
 - **Built for actual attention.** Stable pins, recent-message ordering, automatic room titles, owner-specific unread marks, and focus-aware completion notifications.
-- **Polish without noise.** Persian/RTL, bundled Vazir, Markdown and math, file attachments, Cosmic and editor-inspired themes, and expressive send effects with reduced-motion support.
+- **Polish without noise.** Multilingual LTR/RTL content, bundled Vazir and system font fallbacks, Markdown and math, file attachments, Cosmic and editor-inspired themes, and expressive send effects with reduced-motion support.
 
 ## Hamid's product-lead scorecard
 

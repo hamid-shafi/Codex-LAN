@@ -323,12 +323,102 @@ class LanFrontendPolishBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(self.page.locator("#room-title")).to_have_text("Client-owned room")
 
         await self.page.keyboard.press("Control+K")
+        await expect(search).to_be_focused()
         await search.fill("Administration")
         await expect(dialog.locator(".quick-switcher-item")).to_have_count(1)
         await self.page.keyboard.press("ArrowDown")
         await self.page.keyboard.press("Enter")
         await expect(self.page.locator("#admin-view")).to_be_visible()
         self.assertEqual(await self.page.evaluate("new URL(location.href).searchParams.get('view')"), "admin")
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_quick_switcher_preserves_reopened_search_after_a_queued_close_event(self):
+        await self.login(self.admin)
+        result = await self.page.evaluate(
+            """async () => {
+                openQuickSwitcher();
+                const dialog = document.getElementById('quick-switcher');
+                const closed = new Promise(resolve => dialog.addEventListener('close', resolve, {once: true}));
+                dialog.close();
+                openQuickSwitcher();
+                const input = document.getElementById('quick-switcher-input');
+                input.value = 'Administration';
+                renderQuickSwitcher({reset: true});
+                await closed;
+                return {open: dialog.open, query: input.value, items: quickSwitcherItems.map(item => item.id)};
+            }"""
+        )
+        self.assertEqual(result, {"open": True, "query": "Administration", "items": ["admin"]})
+        search = self.page.locator("#quick-switcher-input")
+        await search.press("Enter")
+        await expect(self.page.locator("#quick-switcher")).to_be_hidden()
+        await expect(self.page.locator("#admin-view")).to_be_visible()
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_quick_switcher_uses_the_physical_key_with_non_english_layouts(self):
+        await self.login(self.admin)
+        dialog = self.page.locator("#quick-switcher")
+        search = self.page.locator("#quick-switcher-input")
+        for key, modifier in (("ن", "ctrlKey"), ("ن", "metaKey"), ("ל", "ctrlKey")):
+            with self.subTest(key=key, modifier=modifier):
+                prevented = await self.page.evaluate(
+                    """({key, modifier}) => {
+                        const event = new KeyboardEvent('keydown', {
+                            key, code: 'KeyK', [modifier]: true,
+                            bubbles: true, cancelable: true,
+                        });
+                        document.activeElement.dispatchEvent(event);
+                        return event.defaultPrevented;
+                    }""",
+                    {"key": key, "modifier": modifier},
+                )
+                self.assertTrue(prevented)
+                await expect(dialog).to_be_visible()
+                await expect(search).to_be_focused()
+                await search.press("Escape")
+                await expect(dialog).to_be_hidden()
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_quick_switcher_keeps_modifier_and_composition_guards(self):
+        await self.login(self.admin)
+        dialog = self.page.locator("#quick-switcher")
+        cases = (
+            {"key": "k", "code": "KeyX", "ctrlKey": True},
+            {"key": "ن", "code": "KeyK"},
+            {"key": "ن", "code": "KeyK", "ctrlKey": True, "altKey": True},
+            {"key": "ن", "code": "KeyK", "ctrlKey": True, "shiftKey": True},
+            {"key": "ن", "code": "KeyK", "ctrlKey": True, "isComposing": True},
+            {"key": "ن", "code": "KeyK", "ctrlKey": True, "repeat": True},
+            {"key": "ن", "code": "KeyK", "ctrlKey": True, "alreadyPrevented": True},
+        )
+        for options in cases:
+            with self.subTest(options=options):
+                await self.page.evaluate(
+                    """options => {
+                        const event = new KeyboardEvent('keydown', {
+                            ...options, bubbles: true, cancelable: true,
+                        });
+                        if (options.alreadyPrevented) event.preventDefault();
+                        document.activeElement.dispatchEvent(event);
+                    }""",
+                    options,
+                )
+                await expect(dialog).to_be_hidden()
+        await self.page.evaluate(
+            """() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'K', ctrlKey: true, bubbles: true, cancelable: true,
+            }))"""
+        )
+        await expect(dialog).to_be_visible()
+        await self.page.locator("#quick-switcher-input").press("Escape")
+        await self.page.locator("#room-menu").click()
+        await expect(self.page.locator("#room-dialog")).to_be_visible()
+        await self.page.evaluate(
+            """() => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'נ', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true,
+            }))"""
+        )
+        await expect(dialog).to_be_hidden()
         self.assertFalse(self.errors, self.errors)
 
     async def test_draft_meter_is_quiet_until_a_meaningful_prompt_is_typed(self):

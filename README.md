@@ -13,11 +13,29 @@ OpenAI product or a public account-sharing service. Use it only with authorized,
 trusted colleagues and within your organization's and provider's access rules.
 No OpenAI API key belongs in this repository.
 
-The browser supports Persian/RTL content, Markdown and math, file attachments,
+The browser supports multilingual LTR/RTL content, Markdown and math, file attachments,
 independent model/thinking controls, read-only turns, streaming activity, persistent
 side threads/details, saved drafts, themes, unread indicators, and notifications.
 Administrators approve devices, review reported/estimated usage, and configure
 the host through **Administration → Host setup**.
+
+### Language and writing direction
+
+The interface, developer comments, and public documentation are in English.
+Message and draft direction uses Unicode bidirectional character classes, not
+an assumption that every non-Latin character is Persian or right-to-left.
+This covers Arabic, Persian, Urdu, Hebrew, Syriac, Thaana, NKo, Adlam, and other
+RTL scripts recognized by the bundled browser data or Python's Unicode database
+in the optional desktop client. Mixed-script drafting remains supported; code,
+math, and password fields keep their left-to-right presentation.
+
+Vazir is bundled for Arabic-script typography; other scripts use available
+system/browser fallback fonts. Writing-direction support is not full interface
+translation or a promise that every system has fonts for every script. Multilingual
+test fixtures intentionally retain their original text.
+
+`Ctrl+K` / `Cmd+K` uses the physical browser key position, so switching the keyboard
+to Persian, Arabic, or Hebrew does not disable the Quick Switcher.
 
 Each response's **Activity → Progress log** keeps the public updates shown while
 Codex was working, even after the final answer arrives or the page is reloaded.

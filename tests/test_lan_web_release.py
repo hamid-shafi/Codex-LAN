@@ -67,7 +67,7 @@ class WebReleaseTests(unittest.TestCase):
             assets = {"app.js": b"js", "style.css": b"css", "index.html": b"html",
                       "Vazir-Variable-v30.1.0.woff2": b"wOF2\x00binary", "Vazir-OFL.txt": b"license",
                       "Vazir-FONT.md": b"provenance", "fonts/other.woff2": b"wOF2more",
-                      "fonts/OFL.txt": b"nested-license"}
+                      "fonts/OFL.txt": b"nested-license", "Unicode-LICENSE.txt": b"unicode-license"}
             for name, data in assets.items():
                 (source / name).write_bytes(data)
             deploy_lan_web.deploy(source, installed)

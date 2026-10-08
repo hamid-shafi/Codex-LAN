@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import gi
 
@@ -252,6 +253,25 @@ class KeyboardShortcutTests(unittest.TestCase):
             )
         )
         self.assertEqual(self.persisted_pair(), ("alpha", "high"))
+
+    def test_search_shortcut_translates_the_physical_key_across_layouts(self) -> None:
+        self.harness.get_display = Mock(return_value=None)
+        self.harness.sidebar_revealer = Mock()
+        self.harness.sidebar_revealer.get_reveal_child.return_value = True
+        self.harness.room_search = Mock()
+        keymap = Mock()
+        keymap.translate_keyboard_state.return_value = (True, Gdk.KEY_k, 0, 0, 0)
+        control = Gdk.ModifierType.CONTROL_MASK
+        with patch.object(Gdk.Keymap, "get_for_display", return_value=keymap):
+            for key in ("ن", "ל", "κ"):
+                with self.subTest(key=key):
+                    event = self.event(Gdk.unicode_to_keyval(ord(key)), control)
+                    event.hardware_keycode = 45
+                    self.assertTrue(self.harness.on_window_key(None, event))
+                    keymap.translate_keyboard_state.assert_called_with(
+                        45, Gdk.ModifierType(0), 0
+                    )
+        self.assertEqual(self.harness.room_search.grab_focus.call_count, 3)
 
     def test_shortcuts_do_not_visually_or_persistently_change_a_busy_room(self) -> None:
         self.harness.room_turns = {

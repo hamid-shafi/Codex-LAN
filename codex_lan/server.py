@@ -1112,7 +1112,7 @@ class Service:
     async def static(self, request):
         name = request.match_info.get("name") or "index.html"
         if name not in {"index.html", "app.js", "host-setup.js", "theme-init.js", "style.css", "companions.js", "companions.css", "controls.js", "controls.css",
-                        "math.js", "math.css", "katex-0.18.7.min.js", "KaTeX-LICENSE.txt",
+                        "math.js", "math.css", "katex-0.18.7.min.js", "KaTeX-LICENSE.txt", "Unicode-LICENSE.txt",
                         "Vazir-Variable-v30.1.0.woff2", "Vazir-OFL.txt", "Vazir-FONT.md"}:
             raise web.HTTPNotFound()
         headers = {"Content-Type": "font/woff2"} if name.endswith(".woff2") else None

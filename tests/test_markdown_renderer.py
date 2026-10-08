@@ -30,6 +30,47 @@ from markdown_view import (  # noqa: E402
 
 
 class DirectionTests(unittest.TestCase):
+    def test_unicode_strong_direction_covers_all_supported_rtl_scripts(self) -> None:
+        samples = {
+            "Arabic": "مرحبا بالعالم",
+            "Hebrew": "שלום עולם",
+            "Urdu": "اردو زبان",
+            "Syriac": "\u0710\u0712\u0713 \u0715\u0717\u0718",
+            "Thaana": "\u0780\u07a6\u0781 \u0782\u07a7\u0783",
+            "NKo": "\u07ca\u07cb\u07cc \u07cd\u07ce\u07cf",
+            "Adlam": "\U0001e900\U0001e922 \U0001e923\U0001e924",
+        }
+        for language, text in samples.items():
+            with self.subTest(language=language):
+                self.assertTrue(is_rtl(text))
+                self.assertFalse(is_rtl(f"Spark {text}"))
+                self.assertTrue(content_prefers_rtl(f"Spark {text}"))
+                view = MarkdownView(f"Spark {text}")
+                self.assertTrue(view.message_rtl)
+                self.assertEqual(view.get_children()[0].get_direction(), Gtk.TextDirection.RTL)
+
+    def test_non_ascii_ltr_letters_participate_in_first_strong_direction(self) -> None:
+        for text in ["Café", "Ελληνικά", "中文", "日本語", "हिन्दी"]:
+            with self.subTest(text=text):
+                self.assertFalse(is_rtl(f"{text} שלום"))
+                self.assertFalse(content_prefers_rtl(f"{text} שלום"))
+                self.assertFalse(MarkdownView(text).message_rtl)
+        self.assertFalse(is_rtl("١٢٣"))
+
+    def test_combining_marks_and_joiners_do_not_add_direction_votes(self) -> None:
+        self.assertFalse(content_prefers_rtl("English sentence with שָׁלוֹם as one label"))
+        self.assertFalse(content_prefers_rtl("English sentence with گفت‌وگو as one label"))
+        self.assertTrue(content_prefers_rtl("Café שָׁלוֹם עוֹלָם"))
+
+    def test_rtl_text_in_code_fences_does_not_change_code_direction(self) -> None:
+        view = MarkdownView("```text\nשלום \U0001e900\U0001e922\n```\n\nEnglish explanation")
+        code_view = next(
+            widget for widget in view._selection_widgets
+            if isinstance(widget, Gtk.TextView)
+        )
+        self.assertEqual(code_view.get_direction(), Gtk.TextDirection.LTR)
+        self.assertFalse(view.message_rtl)
+
     def test_first_strong_helper_remains_predictable(self) -> None:
         self.assertTrue(is_rtl("این Spark است"))
         self.assertFalse(is_rtl("Spark یک ابزار است"))
