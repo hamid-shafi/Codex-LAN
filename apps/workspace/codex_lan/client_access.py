@@ -43,7 +43,10 @@ class ClientAccess:
             "version": version,
             "sha256": digest.lower(),
             "size": size,
-            "archive_url": f"/api/client/download/{version}/archive",
+            # Installed updaters accept only this stable endpoint. They verify
+            # size, checksum and payload version before activating a release.
+            "archive_url": "/api/client/download/archive",
+            "versioned_archive_url": f"/api/client/download/{version}/archive",
             "installer_url": f"/api/client/download/{version}/installer",
             "private_installer_url": f"/api/client/installer/{version}",
             "pairing_url": f"/api/client/pairing/{version}",

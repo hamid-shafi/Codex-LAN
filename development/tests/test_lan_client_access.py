@@ -358,6 +358,14 @@ class LanClientAccessTests(unittest.IsolatedAsyncioTestCase):
             await self.request("POST", "/api/client/installer", device, expected=403, json={})
         release = await self.request("GET", "/api/client/release", self.a)
         self.assertEqual(release["sha256"], hashlib.sha256(archive).hexdigest())
+        self.assertEqual(release["archive_url"], "/api/client/download/archive")
+        self.assertEqual(release["versioned_archive_url"], "/api/client/download/0.3.0/archive")
+        for url in (release["archive_url"], release["versioned_archive_url"]):
+            response = await self.client.get(url, headers=self.cookie(self.a))
+            self.assertEqual(response.status, 200)
+            downloaded = await response.read()
+            self.assertEqual(len(downloaded), release["size"])
+            self.assertEqual(hashlib.sha256(downloaded).hexdigest(), release["sha256"])
         for device in (self.a, self.admin):
             status = (await self.request("GET", "/api/me", device))["connector_release"]
             self.assertEqual(status, release)

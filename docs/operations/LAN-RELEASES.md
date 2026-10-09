@@ -68,6 +68,17 @@ history databases, erase old messages or silently continue with missing context.
 
 ## Daily use
 
+To update an already paired computer, download **Download update** from its
+Connector panel and run that installer as the same desktop user. Existing
+pairing is preserved; a fresh pairing file is only needed for initial setup or
+explicit identity repair. Updating the browser alone does not update Connector.
+
+Release metadata keeps `archive_url` at `/api/client/download/archive` because
+installed native updaters require that endpoint. They validate the advertised
+size, SHA-256, and payload version before activation. `versioned_archive_url`
+is available for callers that support version-pinned downloads; versioned
+installer and pairing links remain unchanged.
+
 - Chrome can be closed without cancelling active work.
 - With the app open, replies in your other rooms trigger an alert. Desktop notifications require browser permission; otherwise an in-app alert offers **Open room**. A visible room stays quiet, including when it is open in another tab. Reloading does not replay old alerts. Desktop permission is offered when sending a prompt and can also be enabled from **Reply notifications** in the quick switcher (`Ctrl+K`).
 - **Send update** adds text or images to the active turn without starting a second turn. The model and thinking level remain unchanged for that turn.

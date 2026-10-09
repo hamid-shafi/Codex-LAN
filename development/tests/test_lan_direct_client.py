@@ -609,6 +609,26 @@ class ConnectorUpdateTests(unittest.TestCase):
         self.assertEqual(self.transport.calls[-1], ("/api/client/maintenance", {"pause": False}))
         self.assertEqual((self.root / "device.token").read_text(), "private-device-token-123456789")
 
+    def test_published_server_manifest_remains_compatible_with_installed_updater(self):
+        from types import SimpleNamespace
+        from codex_lan.client_access import ClientAccess
+
+        server_data = Path(self.temp.name) / "server"
+        releases = server_data / "releases"
+        releases.mkdir(parents=True)
+        archive = self.transport.archive.read_bytes()
+        (releases / "client.tar.gz").write_bytes(archive)
+        (releases / "Install-Codex-Connector.sh").write_text("# Synthetic installer\n")
+        (releases / "release.json").write_text(json.dumps({
+            "version": self.transport.version,
+            "size": len(archive), "sha256": hashlib.sha256(archive).hexdigest(),
+        }))
+        self.transport.metadata = ClientAccess.release_info(SimpleNamespace(data_dir=server_data))
+        message = self.connector.update()
+        self.assertIn("updated to 0.2.1", message)
+        self.assertEqual((self.root / "current").resolve().name, "0.2.1")
+        self.assertEqual((self.root / "device.token").read_text(), "private-device-token-123456789")
+
     def test_cancelled_drain_preserves_running_version_and_clears_gate(self):
         self.transport.active_counts = [1]
 
