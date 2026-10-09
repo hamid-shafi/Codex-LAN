@@ -144,6 +144,7 @@ class Store(CompanionStoreMixin):
                     token_hash TEXT NOT NULL UNIQUE,
                     status TEXT NOT NULL CHECK(status IN ('pending','approved','revoked','rejected')),
                     is_admin INTEGER NOT NULL DEFAULT 0,
+                    response_limits_enabled INTEGER NOT NULL DEFAULT 1 CHECK(response_limits_enabled IN (0,1)),
                     max_concurrent INTEGER NOT NULL DEFAULT 1 CHECK(max_concurrent > 0),
                     token_budget INTEGER CHECK(token_budget >= 0),
                     created_at REAL NOT NULL,
@@ -336,6 +337,7 @@ class Store(CompanionStoreMixin):
         self._migrate_message_steering()
         self._migrate_execution_origins()
         self._migrate_connector_confirmations()
+        self._migrate_response_limits()
         self._migrate_tool_read_only()
         self._migrate_steering_access_mode()
         self._migrate_companions()
@@ -398,6 +400,20 @@ class Store(CompanionStoreMixin):
                         "ALTER TABLE " + table
                         + " ADD COLUMN tool_read_only INTEGER NOT NULL DEFAULT 0 CHECK(tool_read_only IN (0,1))"
                     )
+
+    def _migrate_response_limits(self):
+        """CODEX: Keep existing client response guards while permanently exempting the administrator."""
+        with self._lock, self.db:
+            columns = {row[1] for row in self.db.execute("PRAGMA table_info(devices)")}
+            if "response_limits_enabled" not in columns:
+                self.db.execute(
+                    "ALTER TABLE devices ADD COLUMN response_limits_enabled INTEGER NOT NULL DEFAULT 1 "
+                    "CHECK(response_limits_enabled IN (0,1))"
+                )
+            self.db.execute(
+                "UPDATE devices SET response_limits_enabled=0 "
+                "WHERE is_admin=1 AND response_limits_enabled!=0"
+            )
 
     def _migrate_steering_access_mode(self):
         """CODEX: Keep requested access changes and their replacement runs durable across reconnects."""
@@ -585,6 +601,10 @@ class Store(CompanionStoreMixin):
         if "is_admin" in result:
             result["is_admin"] = bool(result["is_admin"])
             result["role"] = "admin" if result["is_admin"] else "client"
+        if "response_limits_enabled" in result:
+            result["response_limits_enabled"] = (
+                not result.get("is_admin", False) and bool(result["response_limits_enabled"])
+            )
         if "read_only_reason" in result:
             result["read_only"] = bool(result["read_only_reason"])
         if "tool_read_only" in result:
@@ -631,9 +651,9 @@ class Store(CompanionStoreMixin):
         device_id, token, now = self._id(), secrets.token_urlsafe(32), time.time()
         digest = hashlib.sha256(token.encode()).hexdigest()
         self.db.execute(
-            "INSERT INTO devices(id,name,token_hash,status,is_admin,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?)",
-            (device_id, name, digest, "approved" if admin else "pending", int(admin), now, now),
+            "INSERT INTO devices(id,name,token_hash,status,is_admin,response_limits_enabled,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?)",
+            (device_id, name, digest, "approved" if admin else "pending", int(admin), int(not admin), now, now),
         )
         return {"device": self._row(self._device(device_id)), "token": token}
 
@@ -845,6 +865,7 @@ class Store(CompanionStoreMixin):
         self, admin_id: str, device_id: str, status: Optional[str] = None,
         max_concurrent: Optional[int] = None, token_budget: Any = _UNSET,
         weekly_share_percent: Any = _UNSET,
+        response_limits_enabled: Any = _UNSET,
     ) -> dict[str, Any]:
         with self._lock, self.db:
             self._actor(admin_id, admin=True)
@@ -864,6 +885,11 @@ class Store(CompanionStoreMixin):
                 changes["token_budget"] = None if token_budget is None else self._count(token_budget, "token budget", maximum=MAX_INTEGER)
             if weekly_share_percent is not _UNSET:
                 changes["weekly_share_percent"] = share_percent(weekly_share_percent)
+            if response_limits_enabled is not _UNSET:
+                enabled = self._boolean(response_limits_enabled, "response limits")
+                if target["is_admin"] and enabled:
+                    raise ValueError("Response limits cannot be enabled for the administrator")
+                changes["response_limits_enabled"] = enabled
             if changes:
                 changes["updated_at"] = time.time()
                 self.db.execute(

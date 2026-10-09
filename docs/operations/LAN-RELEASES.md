@@ -86,6 +86,21 @@ installer and pairing links remain unchanged.
 - Pause waits for active work to finish and blocks new work. Resume is explicit. The maintenance gate survives connector and server restarts.
 - Locking the screen does not stop the services. Suspend, power loss, network loss and logging out are different; uninterrupted execution through those events is not promised.
 
+## Per-response safety limits
+
+Administrator responses are exempt from the app's per-response time and
+model-usage safety stops. Provider limits still apply, and usage is still recorded.
+
+For other users, open their device profile in **Administration**, change
+**Limit each response**, and choose **Save limits**. This is enabled by default:
+it stops a response after 45 minutes or unusually large recorded model usage.
+Only administrators can change it. The setting applies to active and future
+responses; enabling it can immediately stop a response already over its limit.
+Disabling it does not resume a response that was already interrupted.
+
+This switch does not change weekly shares, lifetime token budgets, usage history,
+or execution permissions. It does not bypass provider-side limits.
+
 ## Weekly shares and response speed
 
 The administrator's Usage page separates OpenAI's reported account allowance

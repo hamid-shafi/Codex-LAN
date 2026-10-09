@@ -1118,6 +1118,11 @@ h1, h2, h3, p { margin-top: 0; }
 .admin-device-metrics { display: flex; align-items: center; gap: 17px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-bottom: 15px; }
 .admin-device-metrics strong { font-weight: 550; color: var(--text); }
 .admin-device-actions { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; padding-top: 13px; border-top: 1px solid var(--line); }
+.response-limit-field { flex-basis: 100%; min-width: 0; margin-bottom: 6px; }
+.admin-device .response-limit-field label { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0; cursor: pointer; }
+.response-limit-field input[type="checkbox"] { flex: 0 0 auto; width: 16px; height: 16px; min-height: 0; margin: 0; padding: 0; accent-color: var(--accent); cursor: pointer; }
+.response-limit-field input:disabled { cursor: default; }
+.response-limit-field .field-hint { margin: 5px 0 0; line-height: 1.5; }
 .limit-field { display: flex; flex-direction: column; gap: 4px; }
 .limit-field label { font-size: 12px; color: var(--muted); font-weight: 450; }
 .limit-field input { max-width: 160px; width: 100%; padding: 8px 10px; min-height: 39px; font-size: 14px; }

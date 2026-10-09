@@ -790,9 +790,11 @@ class Service:
 
     async def device(self, request):
         data = await body(request)
-        if set(data) - {"status", "max_concurrent", "token_budget", "weekly_share_percent"}:
+        if set(data) - {"status", "max_concurrent", "token_budget", "weekly_share_percent", "response_limits_enabled"}:
             raise ValueError("Unsupported device setting")
         device = self.store.set_device(request[DEVICE]["id"], request.match_info["device"], **data)
+        if "response_limits_enabled" in data:
+            self.runtime.refresh_response_limits(device)
         if device["status"] != "approved":
             peer = self.runtime.peers.get(device["id"])
             if peer:

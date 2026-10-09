@@ -4033,11 +4033,19 @@ function createAdminDevice(device) {
   const share = limitField(`share-${device.id}`, "Weekly share of account (%)", "", "No weekly limit", true);
   share.input.max = "100"; share.input.step = "any"; share.wrapper.classList.add("quota-share-field");
   const budget = limitField(`budget-${device.id}`, "Token budget", "", "Unlimited", true);
+  const responseLimits = { wrapper: element("div", "response-limit-field"), input: element("input") };
+  responseLimits.input.type = "checkbox"; responseLimits.input.id = `response-limits-${device.id}`;
+  const responseLimitsLabel = element("label"); responseLimitsLabel.htmlFor = responseLimits.input.id;
+  responseLimitsLabel.append(responseLimits.input, document.createTextNode("Limit each response"));
+  const responseLimitsHelp = element("p", "field-hint"); responseLimitsHelp.id = `response-limits-help-${device.id}`;
+  responseLimits.input.setAttribute("aria-describedby", responseLimitsHelp.id);
+  responseLimits.wrapper.append(responseLimitsLabel, responseLimitsHelp);
   const details = element("details", "device-usage-details");
   const metrics = element("div", "admin-device-metrics");
   details.append(element("summary", "", "Usage details & advanced limits"), metrics, budget.wrapper, element("p", "usage-explanation", "Token budget is a separate lifetime limit. Leaving the weekly share blank does not remove it."));
-  card._fields = { concurrency, share, budget }; card._dirty = new Set();
+  card._fields = { concurrency, share, budget, responseLimits }; card._dirty = new Set();
   for (const [key, field] of Object.entries(card._fields)) field.input.addEventListener("input", () => { card._dirty.add(key); });
+  const fieldValue = (input) => input.type === "checkbox" ? input.checked : input.value;
   const save = element("button", "button", "Save limits"); save.type = "button";
   save.addEventListener("click", async () => {
     const max = Number(concurrency.input.value);
@@ -4048,12 +4056,14 @@ function createAdminDevice(device) {
       toast(ownAdmin ? "Use 1–10 concurrent responses, a personal target above 0 and up to 100%, and a non-negative whole-number lifetime token budget." : "Use 1–10 concurrent responses, a weekly share from 0 to 100%, and a non-negative whole-number lifetime token budget."); return;
     }
     if (!ownAdmin && allocation !== null && allocation > 0 && !card._quotaReliable && !window.confirm("The weekly estimate is learning, stale, or incomplete. Saving this share starts tracking it now; new responses are blocked only at 0% or when a fresh calibrated measurement reaches the share. Save this limit?")) return;
-    const values = Object.fromEntries(Object.entries(card._fields).map(([key, field]) => [key, field.input.value]));
+    const values = Object.fromEntries(Object.entries(card._fields).map(([key, field]) => [key, fieldValue(field.input)]));
+    const payload = { max_concurrent: max, token_budget: amount, weekly_share_percent: allocation };
+    if (card._device.role !== "admin") payload.response_limits_enabled = values.responseLimits;
     save.disabled = true;
     try {
-      await api(`/api/admin/devices/${encodeURIComponent(card._device.id)}`, { method: "PATCH", body: JSON.stringify({ max_concurrent: max, token_budget: amount, weekly_share_percent: allocation }) });
+      await api(`/api/admin/devices/${encodeURIComponent(card._device.id)}`, { method: "PATCH", body: JSON.stringify(payload) });
       // CODEX: Keep edits made while the save was in flight; successful saves never erase newer drafts.
-      for (const [key, value] of Object.entries(values)) if (card._fields[key].input.value === value) card._dirty.delete(key);
+      for (const [key, value] of Object.entries(values)) if (fieldValue(card._fields[key].input) === value) card._dirty.delete(key);
       await refreshAdmin();
       if (ownAdmin) await checkSession();
     } catch (error) { toast(error.message); }
@@ -4087,10 +4097,10 @@ function createAdminDevice(device) {
     } catch (error) { toast(error.message); }
     finally { acknowledgeUnknown.disabled = false; acknowledgeUnknown.removeAttribute("aria-busy"); }
   });
-  const note = element("p", "quota-save-note", "Blank = no weekly limit · 0% = block new responses · Changing a share keeps usage history. Running responses are not interrupted.");
-  actions.append(concurrency.wrapper, share.wrapper, save, element("span", "flex-spacer"), approval, reject, revoke, stop, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note);
+  const note = element("p", "quota-save-note", "Blank = no weekly limit · 0% = block new responses · Changing a weekly share keeps usage history and does not interrupt running responses.");
+  actions.append(responseLimits.wrapper, concurrency.wrapper, share.wrapper, save, element("span", "flex-spacer"), approval, reject, revoke, stop, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note);
   card.append(head, quotaBody, actions, details);
-  card._nodes = { head, quotaBody, metrics, approval, reject, revoke, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note };
+  card._nodes = { head, quotaBody, metrics, approval, reject, revoke, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note, responseLimitsHelp };
   return card;
 }
 
@@ -4267,7 +4277,7 @@ async function refreshMyUsage() {
 
 function updateAdminDevice(card, device, rows, estimate, quota) {
   card._device = device;
-  const { head, quotaBody, metrics, approval, reject, revoke, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note } = card._nodes;
+  const { head, quotaBody, metrics, approval, reject, revoke, deleteDevice, acknowledgeUnknown, acknowledgeHelp, note, responseLimitsHelp } = card._nodes;
   const view = deviceQuotaView(device, estimate, quota); card._quotaReliable = view.reliable; card._quotaView = view;
   const name = element("div", "admin-device-name");
   const label = element("strong", "", device.name || `Device ${device.id}`); label.dir = direction(device.name); name.append(label, element("span", `badge ${device.status}`, device.status || "pending"));
@@ -4289,10 +4299,19 @@ function updateAdminDevice(card, device, rows, estimate, quota) {
     const input = card._fields[key].input;
     if (!card._dirty.has(key) && document.activeElement !== input) input.value = value ?? "";
   }
+  const responseLimits = card._fields.responseLimits.input;
+  responseLimits.disabled = device.role === "admin";
+  if (responseLimits.disabled) {
+    responseLimits.checked = false;
+    card._dirty.delete("responseLimits");
+  } else if (!card._dirty.has("responseLimits") && document.activeElement !== responseLimits) responseLimits.checked = device.response_limits_enabled !== false;
+  responseLimitsHelp.textContent = responseLimits.disabled
+    ? "Admin responses have no per-response time or model-usage safety limit."
+    : "Stop a response after 45 minutes or unusually large model usage. Applies to running and future responses; weekly shares are separate.";
   const ownAdmin = device.role === "admin" && idOf(device.id) === idOf(state.me.id);
   card._fields.share.wrapper.querySelector("label").textContent = ownAdmin ? "Personal analysis target (% of account)" : "Weekly share of account (%)";
   card._fields.share.input.placeholder = ownAdmin ? "No target" : "No weekly limit";
-  note.textContent = ownAdmin ? "Analysis target only · It never blocks host prompts · Blank keeps estimated device attribution visible." : "Blank = no weekly limit · 0% = block new responses · Changing a share keeps usage history. Running responses are not interrupted.";
+  note.textContent = ownAdmin ? "Analysis target only · It never blocks host prompts · Blank keeps estimated device attribution visible." : "Blank = no weekly limit · 0% = block new responses · Changing a weekly share keeps usage history and does not interrupt running responses.";
   approval.hidden = device.status === "approved"; approval.textContent = device.status === "pending" ? "Approve" : "Restore access";
   reject.hidden = device.status !== "pending";
   revoke.hidden = device.status !== "approved" || idOf(device.id) === idOf(state.me.id);

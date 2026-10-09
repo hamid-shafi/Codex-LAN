@@ -602,6 +602,8 @@ class LiveRun:
     context_compaction_ids: set = field(default_factory=set)
     safety_reason: str | None = None
     safety_handle: object = None
+    response_limits_enabled: bool = True
+    response_usage_exceeded: bool = False
 
     def text(self, final=False):
         selected = self.items
@@ -1562,17 +1564,42 @@ class Runtime:
             live.context_overview["content"].append(history)
         live.retired_turns.update(retired_turns or ())
         self.runs[run["id"]] = live
+        owner = self.store.get_device(run["owner_id"])
+        self._configure_response_limits(live, self._response_limits_enabled(owner))
+        live.task = self.track(self._start(live, room, text, attachment_ids))
+
+    @staticmethod
+    def _response_limits_enabled(device):
+        return not device.get("is_admin", False) and device.get("response_limits_enabled", True)
+
+    def refresh_response_limits(self, device):
+        """Apply an administrator's policy to this owner's active responses."""
+        enabled = self._response_limits_enabled(device)
+        for live in tuple(self.runs.values()):
+            if live.run["owner_id"] == device["id"]:
+                self._configure_response_limits(live, enabled)
+
+    def _configure_response_limits(self, live, enabled):
+        if live.safety_handle is not None:
+            live.safety_handle.cancel()
+            live.safety_handle = None
+        live.response_limits_enabled = enabled
+        if not enabled or live.stopped or live.safety_reason:
+            return
+        if live.response_usage_exceeded:
+            self._request_safety_stop(live, RUN_USAGE_LIMIT_MESSAGE)
+            return
         created_at = live.run.get("created_at")
         elapsed = max(0.0, time.time() - created_at) if isinstance(created_at, (int, float)) else 0.0
         remaining = max(0.0, MAX_RUN_SECONDS - elapsed)
         live.safety_handle = asyncio.get_running_loop().call_later(
             remaining, self._request_safety_stop, live, RUN_TIME_LIMIT_MESSAGE
         )
-        live.task = self.track(self._start(live, room, text, attachment_ids))
 
     def _request_safety_stop(self, live, reason):
         """CODEX: Mark a limit synchronously so duplicate usage frames cannot queue duplicate interrupts."""
-        if live.run["id"] not in self.runs or live.stopped or live.safety_reason:
+        if (not live.response_limits_enabled or live.run["id"] not in self.runs
+                or live.stopped or live.safety_reason):
             return False
         live.safety_reason = reason
         self._flush_response_deltas(live, force_status=True)
@@ -2125,10 +2152,11 @@ class Runtime:
                     counts["cachedInputTokens"], live.run.get("speed") or "standard",
                 )
                 credits = estimate.get("credits_micros")
-                if (
+                live.response_usage_exceeded = (
                     counts["totalTokens"] >= MAX_RUN_TOTAL_TOKENS
                     or isinstance(credits, int) and credits >= MAX_RUN_CREDITS_MICROS
-                ):
+                )
+                if live.response_limits_enabled and live.response_usage_exceeded:
                     self._request_safety_stop(live, RUN_USAGE_LIMIT_MESSAGE)
         elif method == "error":
             error = params.get("error", {})
