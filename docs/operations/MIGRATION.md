@@ -50,23 +50,79 @@ restore of the old server. Keep the original host until a checked import is
 available and has been verified. Prefer creating the backup after active prompts
 finish so a message and any newly arriving attachment are captured together.
 
-## If old identities and native sessions must be preserved
+## Selected rooms with native conversation memory
+
+For an independent Linux host that must continue selected administrator-owned
+rooms, use the selective transfer tool. Unlike the history-only backup above,
+this includes native Codex history, compacted memory, descendant agent sessions,
+and referenced attachments. It does not issue model requests or restart the
+source host.
+
+The first format deliberately supports only the reviewed **Codex CLI 0.159.3**
+paginated SQLite schemas. Both versions and schemas are checked; an unknown
+format is refused rather than guessed. Export only root rooms without companions
+from a single administrator. Obtain their IDs from the room URLs.
+
+```bash
+python3 setup/maintenance/transfer_lan_history.py export \
+  --room ROOM_UUID --room ANOTHER_ROOM_UUID \
+  --output "$HOME/.local/share/codex-lan-private-transfer/selected-history.zip"
+```
+
+The output directory must be private (`0700`) and outside any Git checkout.
+The ZIP is `0600`, **not encrypted**. Login files, device credentials, pairing,
+TLS keys, global usage calibration, and unrelated conversations are excluded.
+Messages, native history, and attachments can themselves contain pasted secrets:
+keep the ZIP private, including when sending it to yourself. Native history can
+be several gigabytes before compression; do not assume it fits an email attachment.
+
+On the laptop, install the reviewed application with `bash setup.sh` and sign in
+to Codex locally. Do not create rooms or start prompts. Extract the trusted ZIP
+outside Git, enter its directory, and run:
+
+```bash
+bash restore-history.sh
+```
+
+The importer requires an empty installation with its own approved administrator
+and the verified Codex version. It verifies checksums before stopping destination
+services, takes an exclusive server lock, backs up existing empty stores, imports
+native memory and LAN history, and restores the previous service state. Failed
+imports roll back; backups remain under the destination's
+`~/.local/share/codex-lan/transfer-backups/`. It refuses nonempty histories and
+the original source administrator. Do not use it as a merge or synchronization
+tool. A crash or power loss during import requires reviewing the retained backup
+before retrying; it is not an unattended disaster-recovery service.
+
+Room ownership is reassigned to the new local administrator. Historical per-answer
+usage remains visible, while provider/account calibration is fresh. Active runs
+are interrupted in the exported copy and pending follow-ups are not replayed.
+Review the saved activity before continuing. Messages arriving after the snapshot
+stay on the original host; the two installations are independent.
+
+Project working trees, external services, and Git/Gerrit credentials are not
+copied. Clone projects separately and select the correct workspace before asking
+the agent to change files. Historical text and rollout bytes are preserved, so
+old paths can still appear in messages; filesystem metadata is remapped without
+rewriting the memory or breaking native byte offsets. Keep the old host until you
+have verified both the displayed history and continuation on the laptop.
+
+## If old identities must also be preserved
 
 A raw runtime directory is not a portable backup. `network.json` contains the old
 address and certificate paths; sessions and workspaces may contain old absolute
 paths; a live SQLite database may have an active WAL. Copying these blindly can
 lose the latest messages or point clients and tools at the wrong computer.
 
-The helper above deliberately does not transfer usable credentials or native
-Codex rollout/session state. A complete private migration therefore needs a
-separate reviewed import plan. Keep OpenAI login separate and sign in again on
-the new host rather than distributing an authentication cache.
+Neither helper transfers usable credentials or preserves other users' identities.
+Moving an entire deployment with existing enrollments therefore needs a separate
+reviewed import plan. Keep OpenAI login separate and sign in again on the new host
+rather than distributing an authentication cache.
 
-The current setup screen supports a fresh installation, not an automatic full
-history/identity import across changed origins. Preserve the old host until a
-checked import has reconciled paths, TLS identity, client credentials, and room
-ownership. Do not delete old data or claim a migration succeeded merely because
-the new health endpoint responds.
+The setup screen supports a fresh installation, not an automatic full identity
+import across changed origins. Preserve the old host until paths, TLS identity,
+client credentials, and room ownership have been reconciled. Do not delete old
+data or claim a migration succeeded merely because the new health endpoint responds.
 
 ## What goes where
 
