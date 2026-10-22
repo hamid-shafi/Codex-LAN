@@ -313,6 +313,42 @@ class LanControlsBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(brand).not_to_have_class("sidebar-brand pointer-mist-surface pointer-mist-active")
         self.assertFalse(self.errors, self.errors)
 
+    async def test_pointer_bursts_measure_once_per_frame_and_keep_latest_position(self):
+        result = await self.page.locator("#composer").evaluate("""async surface => {
+            surface.dispatchEvent(new PointerEvent('pointerleave'));
+            const original = surface.getBoundingClientRect;
+            const rect = original.call(surface);
+            let reads = 0;
+            surface.getBoundingClientRect = function() {
+                reads++;
+                return original.call(this);
+            };
+            try {
+                for (let index = 0; index < 50; index++) {
+                    surface.dispatchEvent(new PointerEvent('pointermove', {
+                        pointerType: 'mouse', clientX: rect.left + 50 + index,
+                        clientY: rect.top + 30,
+                    }));
+                }
+                const beforeFrame = reads;
+                await new Promise(requestAnimationFrame);
+                const mist = surface.querySelector('.pointer-mist');
+                return {
+                    beforeFrame, afterFrame: reads,
+                    x: mist.style.getPropertyValue('--pointer-x'),
+                    y: mist.style.getPropertyValue('--pointer-y'),
+                    active: surface.classList.contains('pointer-mist-active'),
+                };
+            } finally {
+                delete surface.getBoundingClientRect;
+                surface.dispatchEvent(new PointerEvent('pointerleave'));
+            }
+        }""")
+        self.assertEqual(result, {
+            "beforeFrame": 0, "afterFrame": 1, "x": "99px", "y": "30px", "active": True,
+        })
+        self.assertFalse(self.errors, self.errors)
+
     async def test_space_composer_highlight_does_not_tile_and_mist_stops_during_drag(self):
         await self.page.locator("#theme-select").select_option("cosmic")
         composer = self.page.locator("#composer")
@@ -321,7 +357,10 @@ class LanControlsBrowserTests(unittest.IsolatedAsyncioTestCase):
         await composer.hover(position={"x": 100, "y": 25})
         await self.page.wait_for_function("document.getElementById('composer').classList.contains('pointer-mist-active')")
         mist = composer.locator(".pointer-mist")
-        self.assertIn("56px 42px", await mist.evaluate("node => getComputedStyle(node).backgroundImage"))
+        self.assertEqual(await mist.evaluate("node => getComputedStyle(node).backgroundImage"), "none")
+        self.assertIn("56px 42px", await mist.evaluate("node => getComputedStyle(node, '::before').backgroundImage"))
+        self.assertEqual(await mist.evaluate("node => getComputedStyle(node, '::before').width"), "112px")
+        self.assertEqual(await mist.evaluate("node => getComputedStyle(node, '::after').width"), "84px")
         await self.page.mouse.down()
         await composer.hover(position={"x": 150, "y": 30})
         self.assertFalse(await composer.evaluate("node => node.classList.contains('pointer-mist-active')"))

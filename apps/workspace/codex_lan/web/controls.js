@@ -545,21 +545,25 @@
       surface.prepend(glow);
       let frame = 0;
       let idleTimer = 0;
-      let x = 0;
-      let y = 0;
+      let clientX = 0;
+      let clientY = 0;
       let trail = null;
       const clear = () => {
         cancelAnimationFrame(frame); clearTimeout(idleTimer); frame = 0; idleTimer = 0;
         trail = null; surface.classList.remove("pointer-mist-active");
       };
       surface.addEventListener("pointermove", event => {
-        if (motion.matches || !finePointer.matches || event.pointerType === "touch" || event.buttons) { clear(); return; }
-        const rect = surface.getBoundingClientRect();
-        x = event.clientX - rect.left;
-        y = event.clientY - rect.top;
+        if (motion.matches || forcedColors.matches || document.hidden || !finePointer.matches || event.pointerType === "touch" || event.buttons) { clear(); return; }
+        clientX = event.clientX;
+        clientY = event.clientY;
         if (frame) return;
         frame = requestAnimationFrame(() => {
           frame = 0;
+          if (motion.matches || forcedColors.matches || document.hidden || !finePointer.matches || !surface.isConnected) { clear(); return; }
+          // Read geometry once for the latest event, even on high polling-rate pointers.
+          const rect = surface.getBoundingClientRect();
+          const x = clientX - rect.left;
+          const y = clientY - rect.top;
           glow.style.setProperty("--pointer-x", `${x}px`);
           glow.style.setProperty("--pointer-y", `${y}px`);
           trail = trail ? { x: trail.x + (x - trail.x) * .35, y: trail.y + (y - trail.y) * .35 } : { x, y };
