@@ -21,7 +21,7 @@ setup_help() {
         '  host --help           Advanced host installer options.' \
         '' \
         'No action selected? An interactive terminal shows the setup menu.' \
-        'Windows: open setup/windows/start.cmd, or run this script inside WSL2 Ubuntu.' \
+        'Windows: open setup/windows/start.cmd; WSL2 Ubuntu is for Connector prerequisites.' \
         'Initial installation needs internet access unless dependencies are pre-staged.' \
         'Chat history, account credentials, and private pairing files stay out of Git.'
 }
