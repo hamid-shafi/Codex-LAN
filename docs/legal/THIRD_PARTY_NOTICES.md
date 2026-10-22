@@ -7,9 +7,9 @@ distribution.
 
 | Component | Tracked distribution | Required notice |
 | --- | --- | --- |
-| KaTeX | Browser math rendering JavaScript, version 0.18.7 | [KaTeX MIT notice](apps/workspace/codex_lan/web/KaTeX-LICENSE.txt) |
-| Vazir | Unmodified Persian font, version 30.1.0 | [SIL OFL 1.1](apps/workspace/codex_lan/web/Vazir-OFL.txt), [font provenance](apps/workspace/codex_lan/web/Vazir-FONT.md) |
-| Unicode Character Database | Assigned strong-RTL intervals derived from [Unicode 17.0.0 Bidi_Class data](https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedBidiClass.txt) | [Unicode License v3](apps/workspace/codex_lan/web/Unicode-LICENSE.txt) |
+| KaTeX | Browser math rendering JavaScript, version 0.18.7 | [KaTeX MIT notice](../../apps/workspace/codex_lan/web/KaTeX-LICENSE.txt) |
+| Vazir | Unmodified Arabic-script font, version 30.1.0 | [SIL OFL 1.1](../../apps/workspace/codex_lan/web/Vazir-OFL.txt), [font provenance](../../apps/workspace/codex_lan/web/Vazir-FONT.md) |
+| Unicode Character Database | Assigned strong-RTL intervals derived from [Unicode 17.0.0 Bidi_Class data](https://www.unicode.org/Public/17.0.0/ucd/extracted/DerivedBidiClass.txt) | [Unicode License v3](../../apps/workspace/codex_lan/web/Unicode-LICENSE.txt) |
 
 The browser's RTL data is pinned to Unicode 17.0.0, uses the strong `R` and `AL`
 bidi classes, and does not treat whole script blocks as directional letters.
@@ -26,5 +26,5 @@ review and retain the licenses and notices of the actual versions they bundle,
 including their transitive dependencies. A source-only export is not approval
 to redistribute generated executables or installer archives.
 
-See [SECURITY.md](SECURITY.md) and [the publication checklist](docs/operations/PUBLISHING.md)
+See [SECURITY.md](../../.github/SECURITY.md) and [the publication checklist](../operations/PUBLISHING.md)
 for privacy and packaging safeguards.

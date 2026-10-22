@@ -46,7 +46,10 @@ or rotate it before publication; deleting the file is not sufficient.
 
 ## Runtime trust
 
-Only expose this service to a trusted local network. Clients should use HTTPS,
+Expose this service only to trusted coworkers on a private network or through
+the [restricted SSH relay](../docs/operations/SSH-RELAY.md). Keep the relay's
+forwarded port on loopback, with separate restricted SSH accounts; do not expose
+the application's ports on the public Internet. Clients should use HTTPS,
 verify the server certificate fingerprint, and receive explicit administrator
 approval. Pairing files and private installers identify one device and must not
 be shared between users. Provider sign-in belongs on the host, not in browser

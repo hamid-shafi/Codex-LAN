@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>Start here · Codex LAN</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #080d19; color: #edf3ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: radial-gradient(ellipse at 80% 0, #272248 0, transparent 48%); }
+    main { max-width: 1080px; padding: 54px 28px 32px; margin: auto; }
+    header { max-width: 750px; margin-bottom: 36px; }
+    .brand, .eyebrow { color: #7bdded; font-size: .78rem; letter-spacing: .15em; text-transform: uppercase; font-weight: 700; }
+    h1 { font-size: clamp(2.2rem, 5vw, 3.9rem); letter-spacing: -.055em; line-height: 1.1; margin: 22px 0; }
+    h2 { font-size: 1.45rem; letter-spacing: -.025em; }
+    h3 { font-size: 1.05rem; }
+    p, li { color: #b9c6da; line-height: 1.7; }
+    strong { color: #eef5ff; }
+    a { color: #8fe4f3; text-underline-offset: 4px; }
+    a:hover { color: #d0f7ff; }
+    a:focus-visible, summary:focus-visible { outline: 2px solid #8fe4f3; outline-offset: 5px; border-radius: 4px; }
+    nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .card { display: block; padding: 24px; border: 1px solid #35415d; border-radius: 18px; background: #121b2dcc; text-decoration: none; color: inherit; }
+    .card:hover { border-color: #7bdded; background: #18253a; }
+    .card span { color: #8d9ab1; font-size: .78rem; }
+    .card h2 { margin: 15px 0 8px; color: #edf3ff; }
+    .card p { font-size: .9rem; margin: 0 0 20px; }
+    .card b { color: #8fe4f3; font-size: .9rem; }
+    .note { border-left: 2px solid #7364bd; padding-left: 18px; margin: 28px 0; font-size: .9rem; }
+    section { scroll-margin-top: 20px; padding: 30px 0; border-top: 1px solid #29364c; }
+    section > h2 { margin-top: 10px; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+    code { font: .88rem ui-monospace, Consolas, monospace; color: #c5eff7; overflow-wrap: anywhere; }
+    pre { border: 1px solid #35415d; border-radius: 10px; background: #10182a; padding: 15px; overflow-x: auto; line-height: 1.8; }
+    pre code { white-space: pre; }
+    details { border: 1px solid #35415d; border-radius: 12px; padding: 16px 18px; margin-top: 14px; }
+    summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
+    details p:last-child { margin-bottom: 0; }
+    ol { padding-left: 22px; }
+    li + li { margin-top: 10px; }
+    .route { padding: 18px; border-radius: 12px; background: #10182a; color: #bce7ee; text-align: center; line-height: 2; }
+    footer { border-top: 1px solid #29364c; padding-top: 22px; font-size: .8rem; color: #96a5bd; line-height: 1.8; }
+    @media (max-width: 720px) { main { padding: 30px 18px; } nav, .columns { grid-template-columns: 1fr; } .card { padding: 20px; } }
+    @media (prefers-contrast: more) { p, li, footer, .card span { color: #e3eaf7; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">Codex LAN / Getting started</div>
+    <h1>One host.<br>A workspace for your team.</h1>
+    <p>Share your coding assistant with approved coworkers. Keep your sign-in private,
+      work from separate computers, and connect from the office or through an SSH relay.</p>
+  </header>
+  <nav aria-label="Choose your setup path">
+    <a class="card" href="#host"><span>01 / WORKSPACE OWNER</span><h2>Host a workspace</h2><p>Your Linux laptop runs the app and keeps the conversations.</p><b>Set up the host →</b></a>
+    <a class="card" href="#join"><span>02 / TEAMMATE</span><h2>Join your team</h2><p>Request approval in a browser. Add local tools when you're ready.</p><b>Get connected →</b></a>
+    <a class="card" href="#relay"><span>03 / REMOTE CONNECTION</span><h2>Use a relay</h2><p>A server bridges the connection. Your data stays on the host.</p><b>See the route →</b></a>
+  </nav>
+  <p class="note"><strong>On Windows?</strong> Start with <a href="#windows">the Windows path</a>.
+    This page works offline with no scripts, tracking, or external assets. Reading it changes nothing.</p>
+
+  <section id="host">
+    <div class="eyebrow">Workspace owner</div><h2>Start with one command.</h2>
+    <div class="columns"><div>
+      <p>Extract or clone the project. In its folder, as your normal Linux user:</p>
+      <pre><code>bash setup.sh</code></pre>
+      <p>Choose <strong>Host</strong>. The menu also offers prerequisite checks and
+        optional Python/OS and official Codex helpers. It asks before installing.</p>
+      <p>Finish in <strong>Administration → Host setup</strong>: configure HTTPS,
+        prepare Connector downloads, and choose whether to keep the laptop awake.</p>
+    </div><div>
+      <h3>What you need</h3>
+      <p>Linux, Python 3.10+ with venv, a systemd user session, OpenSSL, and the official
+        standalone Codex signed in on this host. First-time downloads need Internet.</p>
+      <p>The setup helper can guide you through these. It does not overwrite a running
+        installation. <strong>Don't run the app as root.</strong></p>
+      <a href="../operations/SETUP.md">Full host guide →</a>
+    </div></div>
+    <details><summary>Missing Python or Codex?</summary>
+      <pre><code>bash setup.sh prerequisites --check
+bash setup.sh prerequisites
+bash setup.sh codex
+bash setup.sh codex --login</code></pre>
+      <p>The OS helper offers Debian/Ubuntu packages with confirmation; other distributions
+        get guidance. Codex uses the official upstream installer with a separate confirmation.
+        Existing Codex is not silently replaced. <a href="DEPENDENCIES.md">What's bundled and what downloads?</a></p>
+    </details>
+  </section>
+
+  <section id="join">
+    <div class="eyebrow">Teammate</div><h2>A browser first. Local tools next.</h2>
+    <ol>
+      <li>Get the HTTPS address and public CA certificate from your administrator.
+        Verify its fingerprint through a trusted channel before trusting it.</li>
+      <li>Open the address, choose <strong>Connect a new computer</strong>, enter your computer
+        name, and choose <strong>Request access</strong>. Send the verification code to the administrator.</li>
+      <li>Stay in that browser profile until approved. Then choose
+        <strong>Connector → Download one-step setup</strong>.</li>
+      <li>Run your private installer as your normal Linux user, or inside WSL2 on Windows.
+        Pairing expires; download a new installer if needed. Never share it with someone else.</li>
+    </ol>
+    <p>You don't need the host's OpenAI password or your own Codex installation.
+      The Connector supplies its runtime bundle; Linux/Python and OS service prerequisites
+      still need to exist. Full-access tools run under your own OS user.</p>
+    <a href="README.md#join-a-team">Full joining guide →</a>
+  </section>
+
+  <section id="windows">
+    <div class="eyebrow">Windows / WSL2</div><h2>Two stages, clearly separated.</h2>
+    <div class="columns"><div><h3>1. Join in Windows</h3>
+      <p>Extract the whole source ZIP. Double-click <code>setup\windows\start.cmd</code>
+        for this guide and read-only checks. No Python or PowerShell script-policy change needed.</p>
+      <p>Chrome or Edge can request access immediately. A relay also needs Windows OpenSSH Client.</p>
+    </div><div><h3>2. Enable local file tools</h3>
+      <p>The Connector currently runs in <strong>WSL2 Ubuntu on x86_64</strong>, with
+        Python 3.10–3.14 and working systemd user services. Not native Windows, Git Bash, or ARM64.</p>
+      <p>Prepare WSL with your Windows administrator if required. No automatic WSL shutdown,
+        certificate trust, or security-policy changes are performed by the starter.</p>
+    </div></div>
+    <a href="../operations/WINDOWS-WSL.md">Windows, certificates, WSL, and troubleshooting →</a>
+    <details><summary>PowerShell says scripts are disabled?</summary>
+      <p>The <code>start.cmd</code> guide still works. The Windows guide includes a native
+        SSH command that does not run a PowerShell script. Don't disable execution policy globally
+        or bypass your organization's restrictions. WSL access errors and SSH authorization are separate issues.</p>
+    </details>
+  </section>
+
+  <section id="relay">
+    <div class="eyebrow">Outside the office LAN</div><h2>A bridge, not another database.</h2>
+    <div class="route">Your browser + Connector → Restricted SSH relay → The host laptop</div>
+    <p>The administrator sets up restricted SSH accounts and the laptop's publisher tunnel
+      first. Only SSH is exposed publicly; the forwarded application port stays on relay loopback.</p>
+    <pre><code>bash setup.sh relay YOUR_USER@YOUR_RELAY</code></pre>
+    <p>Replace the placeholder with your administrator's login. Verify the SSH host key and
+      laptop CA separately. Open <code>https://127.0.0.2:8767</code> and keep the tunnel open.</p>
+    <p><strong>A successful tunnel can be silent.</strong> “Permission denied” is an authentication
+      failure. SSH access is not app approval. For Windows and WSL, verify the route in both environments.</p>
+    <p>The laptop must stay powered, awake, and online. A relay cannot keep the app running while it sleeps.</p>
+    <a href="../operations/SSH-RELAY.md">Relay administrator and client guide →</a>
+  </section>
+
+  <footer>
+    For trusted, authorized coworkers, within your organization's and provider's rules.
+    Independent of OpenAI. No project-wide license grant.<br>
+    Source is not a backup: chats, credentials, private keys, and pairing files stay outside Git.<br>
+    <a href="DEPENDENCIES.md">Dependencies & offline preparation</a> ·
+    <a href="../product/FEATURES.md">Features</a> ·
+    <a href="../product/STORY.md">Development story</a> ·
+    <a href="../../.github/SECURITY.md">Security</a>
+  </footer>
+</main>
+</body>
+</html>

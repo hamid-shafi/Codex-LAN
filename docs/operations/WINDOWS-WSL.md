@@ -1,5 +1,13 @@
 # Windows browser + WSL Connector
 
+**Starting from the GitHub source ZIP?** Extract the entire checkout and
+double-click `setup/windows/start.cmd`. It opens the offline start guide and
+offers read-only inventory without Python or a PowerShell script. It does not
+install WSL, change policy, or carry your team's CA or credentials. A browser can
+request access before WSL is installed; the Connector needs WSL for local tools.
+For a same-LAN connection, use the host's HTTPS address and skip SSH tunnel steps.
+The remainder covers the remote relay path.
+
 Use a native Windows SSH tunnel for your browser, and a Linux tunnel inside
 WSL 2 for the Connector. Both use `https://127.0.0.2:8767` and the same laptop CA.
 The laptop remains the application host; the SSH server only relays traffic.

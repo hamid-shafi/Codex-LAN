@@ -61,13 +61,17 @@ It does not bundle credentials, insert authorized keys, or require sudo.
 From the source checkout, run:
 
 ```bash
-bash setup/connector/connect_ssh_relay.sh YOUR_USER@YOUR_RELAY
+bash setup.sh relay YOUR_USER@YOUR_RELAY
 ```
 
 Replace the placeholder with the account and relay address supplied to you. An
 SSH host alias from your own SSH configuration also works after `@`. When SSH
 asks about an unknown host key, compare its fingerprint before accepting it.
 A changed key must be investigated with the administrator.
+
+The underlying `setup/connector/connect_ssh_relay.sh` remains directly usable
+in a separately prepared client bundle. Neither launcher provisions relay
+accounts or the laptop publisher tunnel.
 
 Keep the terminal open and manually open `https://127.0.0.2:8767`. Verify the CA
 certificate's SHA-256 fingerprint, then import that public CA certificate into

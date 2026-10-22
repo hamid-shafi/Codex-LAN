@@ -14,7 +14,7 @@ python3 project.py check
 
 `python3 project.py test` discovers the full suite. Browser checks need their
 browser dependencies; desktop checks additionally need GTK and a display or
-headless display. See [contributing](../CONTRIBUTING.md) and the
+headless display. See [contributing](../.github/CONTRIBUTING.md) and the
 [repository guide](../docs/architecture/REPOSITORY.md).
 
 The runner sets explicit import paths for the organized sources and child

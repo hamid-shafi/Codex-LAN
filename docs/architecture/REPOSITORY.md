@@ -11,24 +11,30 @@ apps/
     requirements.txt   Workspace Python dependencies
   desktop/             Optional GTK app, assets, and desktop installers
 setup/
+  bootstrap/           Guided Linux start and prerequisite helpers
+  windows/             Native Windows getting-started launcher
   host/                New-host installation and HTTPS setup
   connector/           Connector installation and launch helpers
   release-tools/       Bundle building, publication, and guarded activation
   maintenance/         Private history backup and repair helpers
 docs/
+  getting-started/      Role-based guide and offline HTML start page
   product/             Product overview and development story
   architecture/        Component boundaries and historical designs
   operations/          Setup, migration, releases, and source publication
+  legal/               Third-party notices
 development/
   tests/               Synthetic unit, integration, and browser checks
   tools/               Publication checks and developer utilities
 project.py             Source-checkout command runner
-setup.sh               Shortcut for the host setup workflow
+setup.sh               Guided Linux start (host, team, relay, prerequisites)
 ```
 
-`README.md` introduces the product and installation. `CONTRIBUTING.md`,
-`SECURITY.md`, and `THIRD_PARTY_NOTICES.md` stay at the root for contributors,
-security review, and distribution notices. Existing filenames inside the folders
+`README.md` is the short product and setup entry point. Contributor and security
+policies live in `.github/`, where GitHub recognizes them; third-party notices
+live in `docs/legal/`. `project_layout.py` remains at the root because installers
+use it as a source/payload boundary, preserving existing release contracts.
+Existing filenames inside the folders
 retain their familiar names; the folders supply their product and workflow context.
 
 ## Commands from the checkout
@@ -81,9 +87,8 @@ outside Git. Workspace runtime state is under `~/.local/share/codex-lan/`; the
 desktop app's legacy history is under `~/.local/share/hamsohbat-codex/`.
 Source folders do not contain an installation snapshot.
 
-Keep the development and reviewed GitHub-ready checkouts synchronized in source
-and documentation, while retaining their separate histories. Record project
-commits in both repositories and stage only the task's changes. Source
-synchronization does not restart an application or authorize a GitHub push.
-Follow [the publication checklist](../operations/PUBLISHING.md) in the reviewed
-checkout before an explicitly requested publication.
+Use a reviewed Git checkout as the source of truth; keep any working source copies
+synchronized without copying runtime data. Stage only reviewed task changes.
+Source synchronization and Git publication do not restart an installed service.
+Follow [the publication checklist](../operations/PUBLISHING.md) before publication;
+deployment remains a separate, guarded operation.

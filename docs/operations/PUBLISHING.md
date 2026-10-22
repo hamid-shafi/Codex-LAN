@@ -7,7 +7,7 @@ pairing files, private connector installers, TLS keys, or local backups.
 
 No project license has been selected. Preparing a personal repository does not
 change that choice. Preserve the bundled notices in
-[THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](../legal/THIRD_PARTY_NOTICES.md).
 
 ## Review and export
 

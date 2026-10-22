@@ -1,154 +1,70 @@
 # Codex LAN
 
-**Start here:** [One-page overview](docs/product/OVERVIEW.md) · [Development story](docs/product/STORY.md).
+### Your Codex. Your team. Their own computers.
 
-**Share your Codex with your team at work.** Codex LAN turns one Linux host into
-a shared coding-assistant workspace for approved coworkers on a trusted office
-network. People connect from their own browsers, keep separate conversations and
-access limits, and use native Connectors to work on their own computers. The host
-owns the Codex login; teammates do not need its login credentials.
+Turn a Linux laptop or workstation into a shared coding workspace for approved
+coworkers. Keep the Codex sign-in and conversations on the host; teammates join
+in a browser and use a Connector to work with files on their own computers.
 
-This is an independent interface around the official Codex app server—not an
-OpenAI product or a public account-sharing service. Use it only with authorized,
-trusted colleagues and within your organization's and provider's access rules.
-No OpenAI API key belongs in this repository.
+**At the office or through an SSH relay:** the relay carries the connection,
+not your database or your Codex credentials. The host must stay awake and online.
 
-The browser supports multilingual LTR/RTL content, Markdown and math, file attachments,
-independent model/thinking controls, read-only turns, streaming activity, persistent
-side threads/details, saved drafts, themes, unread indicators, and notifications.
-Administrators approve devices, review reported/estimated usage, and configure
-the host through **Administration → Host setup**.
+## Start with your role
 
-### Language and writing direction
+| I want to… | Start here |
+| --- | --- |
+| **Host a workspace** on my Linux computer | Run `bash setup.sh` → Host · [Host guide](docs/operations/SETUP.md) |
+| **Join my team's workspace** | Open the address from your administrator → **Connect a new computer** → **Request access** · [Join guide](docs/getting-started/README.md#join-a-team) |
+| **Connect from Windows** | Extract the repository, then double-click [`setup/windows/start.cmd`](setup/windows/start.cmd) · [Windows / WSL](docs/operations/WINDOWS-WSL.md) |
+| **Reach a laptop through a server** | Use the administrator's restricted SSH login · [Relay guide](docs/operations/SSH-RELAY.md) |
 
-The interface, developer comments, and public documentation are in English.
-Message and draft direction uses Unicode bidirectional character classes, not
-an assumption that every non-Latin character is Persian or right-to-left.
-This covers Arabic, Persian, Urdu, Hebrew, Syriac, Thaana, NKo, Adlam, and other
-RTL scripts recognized by the bundled browser data or Python's Unicode database
-in the optional desktop client. Mixed-script drafting remains supported; code,
-math, and password fields keep their left-to-right presentation.
+**Downloaded the source?** Open [`docs/getting-started/index.html`](docs/getting-started/index.html)
+locally for a guided start page—no Python, web server, or Internet needed to read it.
+On GitHub, use the [Getting started guide](docs/getting-started/README.md).
 
-Vazir is bundled for Arabic-script typography; other scripts use available
-system/browser fallback fonts. Writing-direction support is not full interface
-translation or a promise that every system has fonts for every script. Multilingual
-test fixtures retain their original Unicode text at runtime. Arabic-script samples
-use Unicode escapes in source, keeping the repository English-first without
-weakening RTL regression coverage.
+Missing Python or Codex? The setup menu includes prerequisite checks and optional
+installation helpers. It explains changes before asking for confirmation.
+First-time downloads still need Internet access; this is not a bundled operating
+system or an offline model. [What is included?](docs/getting-started/DEPENDENCIES.md)
 
-The compact profile button at the bottom of the sidebar opens your account menu:
-profile details, My Usage, Easy sign-in, appearance toggle, keyboard guide, and
-Administration when authorized. Room search stays free of shortcut badges.
-`Ctrl+/` / `Cmd+/` opens the keyboard guide directly; `Ctrl+K` / `Cmd+K` opens
-the Quick Switcher. These navigation shortcuts use physical browser key positions,
-so changing the keyboard layout does not disable them. In chat, `Ctrl+Alt+PageUp`
-and `Ctrl+Alt+PageDown` navigate the displayed rooms, `Ctrl+Alt+S` cycles supported
-response speeds, and `Ctrl+Alt+R` toggles the draft's read-only preference. Changing
-that preference during a response still requires **Send update** to apply it.
-Other text fields, open menus/dialogs, and AltGr retain their own key handling.
-Entering a room dismisses its reply notification;
-acknowledging unread messages still requires the page to be visible and focused.
-Modal dialogs, including My Usage, close on a click outside their bounds. Floating
-More Details and side-thread panels keep their explicit close controls.
+## Built for a working team
 
-Each response's **Activity → Progress log** keeps the public updates shown while
-Codex was working, even after the final answer arrives or the page is reloaded.
-Tool steps and their output remain in the Activity tab. These bounded, redacted
-logs are private room data stored on the host, not private reasoning or source
-files included in a repository export; older runs may have no archived updates.
+- **Controlled sharing:** approve devices, assign usage limits, revoke access;
+  teammates never need the host's sign-in credentials.
+- **Independent work:** rooms, model/thinking/speed settings, read-only turns,
+  attachments, and **Send update** while a response is running.
+- **Explore without losing your place:** resizable Side threads and floating
+  More details, with saved drafts and history across reloads.
+- **See what happened:** streaming Activity, preserved public Progress logs,
+  available Prepared context, and per-response usage reports.
+- **A considered interface:** themes, Markdown/math, multilingual LTR/RTL,
+  keyboard navigation, unread indicators, and focus-aware notifications.
 
-## Start on a new Linux host
+[Feature details](docs/product/FEATURES.md) · [The one-page overview](docs/product/OVERVIEW.md)
+· [The story: built with Hamid](docs/product/STORY.md)
 
-You need Linux, Python 3.10+, Python's `venv` support, a working systemd user session,
-OpenSSL for HTTPS, and the official Codex CLI. Run as your desktop user, not root.
-Install and sign in to Codex locally before starting the shared host; never paste
-a password or copy an authentication cache into chat.
+## A small map
 
-```bash
-codex -c 'cli_auth_credentials_store="file"' login
-python3 project.py host --check
-bash setup.sh
-```
+| Folder | What's inside |
+| --- | --- |
+| [`setup/`](setup/README.md) | Install, connect, update, and back up |
+| [`apps/`](apps/) | Shared workspace and optional desktop app |
+| [`docs/`](docs/README.md) | Getting started, product, architecture, and operations |
+| [`development/`](development/README.md) | Tests and maintainer tools |
 
-`setup.sh` installs a private Python environment and user services, then opens the
-local administrator page. It downloads Python dependencies unless you supply an
-offline wheel directory. The source checkout stays separate from runtime data.
-It refuses to reinstall over a running server.
+`setup.sh` is the Linux entry point. `project.py` and `project_layout.py` support
+developer commands and stable installed paths. [Repository guide](docs/architecture/REPOSITORY.md).
 
-In **Host setup**, choose the actual private IPv4 address of the new computer,
-prepare HTTPS and the downloadable Connector, and optionally prevent host sleep.
-The screen shows prerequisites, service state, certificate fingerprint, download
-status, and safe next actions. Privileged firewall/OS changes still require local
-operating-system approval, not a password entered into this app.
+## Trust comes first
 
-See [the complete setup guide](docs/operations/SETUP.md), [laptop migration and private backups](docs/operations/MIGRATION.md),
-and [the current architecture and Connector guide](docs/operations/LAN-RELEASES.md).
+For authorized, trusted coworkers—not public hosting or isolation between
+untrusted tenants. Full-access turns can execute commands as the relevant OS
+user. Use only within your organization's and provider's access rules.
+Usage percentages are estimates, not official per-user billing.
 
-## Trust and access
+Databases, chats, uploads, pairing files, certificates, and credentials stay
+outside Git. This is an independent project, not an OpenAI product. No
+project-wide license has been granted.
 
-Only loopback HTTP is enabled initially. LAN clients use the configured private
-HTTPS address and verify the host's local CA. Keep this on a trusted LAN; it is not
-a public-internet deployment recipe. Client pairing files are per-user, expiring,
-private credentials and must not be committed.
-
-Codex can run commands and modify files accessible to the host account when full
-access is enabled. Read-only is a per-turn execution setting. Do not expose a
-personal host to untrusted users, and never enter a `sudo` password in chat or the
-setup UI. Locking the screen may remain enabled; suspending the host stops access.
-
-Reported token usage and account-percentage estimates are different measurements.
-Missing usage is not counted as zero, and estimates are not official billing data.
-
-### Context and compaction
-
-New and resumed turns use a bounded 96,000-token budget for **new content after
-the retained prefix**, with a 12,000-token tool-output budget. This balances
-context growth against repeated compaction pauses; Codex's own model-window
-limit remains authoritative. Raising the previous 64,000-token budget can reduce
-compaction frequency, but can also increase input tokens in individual model
-requests. It does not promise lower usage or a fixed compaction duration.
-
-Normal turns send the current message and attachments, not a second copy of the
-visible room history or the Prepared context display. Recorded historical limits
-remain unchanged. See [OpenAI's compaction guide](https://developers.openai.com/api/docs/guides/compaction)
-for the underlying context-management mechanism.
-
-## Private state stays off GitHub
-
-Installed runtime state lives under `~/.local/share/codex-lan/`: databases, uploads,
-tokens, pairing material, TLS keys, bundles, and logs. OpenAI authentication stays
-in the local Codex credential store. Do not add any of these to the repository,
-even in a private GitHub repository or its history.
-
-Before publishing, follow [the publication checklist](docs/operations/PUBLISHING.md) and run
-the repository's publication check. Its source-only export excludes `.git` and
-runtime state. Private history snapshots are saved separately with mode `0600`;
-they are not source exports and should be transferred only by a private channel.
-
-There is currently no project-wide license grant. Third-party assets retain their
-own licenses; see [the third-party inventory](THIRD_PARTY_NOTICES.md).
-
-## Development and verification
-
-```bash
-python3 -m venv .venv-lan
-.venv-lan/bin/python -m pip install -r apps/workspace/requirements.txt
-.venv-lan/bin/python project.py test discover -s development/tests -p 'test_lan_*.py'
-```
-
-Tests use temporary state and loopback listeners. A running server should be
-updated through its guarded deployment path after active prompts finish, not by
-blindly restarting it. See [release procedures](docs/operations/LAN-RELEASES.md).
-
-The older GTK desktop client remains available as an independent optional app:
-`python3 project.py desktop --check`, `bash apps/desktop/run.sh`, and
-`bash apps/desktop/install.sh`. Its private legacy
-history directory is `~/.local/share/hamsohbat-codex`; it is not included in a clean
-LAN installation unless you explicitly request the existing desktop-history import.
-
-The source tree groups the workspace and desktop products under `apps/`,
-installation and release workflows under `setup/`, documentation under `docs/`,
-and developer tests and tools under `development/`. Run project commands from
-the checkout root with `project.py`; it supplies the source import paths.
-See [the repository guide](docs/architecture/REPOSITORY.md) for the complete layout
-and the distinction between source folders, installed payloads, and private state.
+[Security](.github/SECURITY.md) · [Contributing](.github/CONTRIBUTING.md)
+· [Third-party notices](docs/legal/THIRD_PARTY_NOTICES.md)

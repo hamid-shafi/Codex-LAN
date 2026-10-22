@@ -20,6 +20,18 @@ jobs:
           python-version: '3.11'
       - run: python3 project.py check --history --allow-identity-metadata
       - run: python3 project.py test test_publication_tools -v
+      - run: python3 project.py test test_guided_setup test_windows_start test_onboarding_docs -q
       - run: python3 -m pip install -r apps/workspace/requirements.txt
       - run: python3 project.py test test_lan_setup_bootstrap test_lan_host_setup test_lan_https test_lan_https_server -q
       - run: python3 project.py test test_lan_server test_lan_store test_lan_file_attachments test_lan_client_access test_lan_rtl -q
+
+  windows-onboarding:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.11'
+      - run: python project.py test test_windows_start test_ssh_relay_windows test_onboarding_docs -q

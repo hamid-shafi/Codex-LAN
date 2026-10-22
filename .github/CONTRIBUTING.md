@@ -3,7 +3,7 @@
 Use a local Python virtual environment and synthetic test data. Never commit a
 copy of an installation, local account sign-in, a pairing file, a private
 connector installer, conversations, uploaded files, or a runtime database.
-The installation and network setup are documented in [README.md](README.md).
+The installation and network setup are documented in [README.md](../README.md).
 
 Before submitting changes:
 
@@ -18,7 +18,7 @@ using temporary directories and fake account/executor fixtures. Desktop GTK
 tests require the distribution's GTK/PyGObject packages. Do not use a real
 provider login or live user conversations as fixtures.
 
-The [repository guide](docs/architecture/REPOSITORY.md) explains the product-first
+The [repository guide](../docs/architecture/REPOSITORY.md) explains the product-first
 source layout. Use `python3 project.py test` for full unittest discovery, or
 `python3 project.py test test_lan_server -q` for a specific test module. The runner
 sets the source import paths for both apps, setup commands, and development tools.

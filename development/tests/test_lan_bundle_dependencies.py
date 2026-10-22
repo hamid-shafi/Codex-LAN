@@ -108,13 +108,18 @@ class BundleDependencyTests(unittest.TestCase):
             connector = mock.Mock()
             connector.server = "https://192.168.1.20:8767"
             connector.update.return_value = "Connector updated to 0.2.1."
-            runner, factory = mock.Mock(), mock.Mock(return_value=connector)
+            runner = mock.Mock(return_value=subprocess.CompletedProcess([], 0))
+            factory = mock.Mock(return_value=connector)
             with mock.patch("setup_lan_direct.Path.home", return_value=home):
                 result = setup_lan_direct.update_existing(root, runner, factory)
             self.assertIn("0.2.1", result)
             self.assertEqual((root / "device.token").read_bytes(), identity)
             connector.update.assert_called_once_with()
-            runner.assert_called_once_with(["systemctl", "--user", "daemon-reload"], check=True)
+            self.assertEqual(runner.call_args_list, [
+                mock.call(["systemctl", "--user", "show-environment"], check=True,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10),
+                mock.call(["systemctl", "--user", "daemon-reload"], check=True),
+            ])
             self.assertIn("\nWorkingDirectory=" + str(root / "current") + "\n",
                           (home / ".config/systemd/user/codex-lan-direct.service").read_text())
 
@@ -143,11 +148,19 @@ class BundleDependencyTests(unittest.TestCase):
             root = home / "existing"
             direct_client.private_write(root / "device.token", "same-private-fixture")
             direct_client.private_write(home / ".local/share/codex-lan/server/admin.token", "same-private-fixture")
-            runner, factory = mock.Mock(), mock.Mock()
-            with mock.patch("setup_lan_direct.Path.home", return_value=home), self.assertRaises(direct_client.ConnectorError):
+            identity = (root / "device.token").read_bytes()
+            runner = mock.Mock(return_value=subprocess.CompletedProcess([], 0))
+            factory = mock.Mock()
+            with mock.patch("setup_lan_direct.Path.home", return_value=home), \
+                    mock.patch("setup_lan_direct.private_write") as write, \
+                    self.assertRaisesRegex(direct_client.ConnectorError, "already uses its host connector"):
                 setup_lan_direct.update_existing(root, runner, factory)
-            runner.assert_not_called()
+            runner.assert_called_once_with(["systemctl", "--user", "show-environment"], check=True,
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
             factory.assert_not_called()
+            write.assert_not_called()
+            self.assertEqual((root / "device.token").read_bytes(), identity)
+            self.assertFalse((home / ".config/systemd/user/codex-lan-direct.service").exists())
 
 
 if __name__ == "__main__":

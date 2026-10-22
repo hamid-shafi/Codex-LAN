@@ -2,7 +2,7 @@
 
 **Your Codex, shared with your team.**
 
-Codex LAN turns one Linux host's Codex into a browser workspace for approved coworkers on a trusted office network. People use the shared host from their own computers, with separate conversations, per-person access and usage controls, and native Connectors for working on their own files. The host's Codex sign-in stays on the host—not in a shared password or a public repository.
+Codex LAN turns one Linux host's Codex into a browser workspace for approved coworkers on a trusted office network or through a restricted SSH relay. People use the shared host from their own computers, with separate conversations, per-person access and usage controls, and Connectors for working on their own files. The host's Codex sign-in stays on the host—not in a shared password or a public repository. The relay carries traffic, not the database; the host must remain awake and online.
 
 **The main idea:** make Codex a practical team resource at work, not just a tool on one person's machine.
 

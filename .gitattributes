@@ -1,5 +1,6 @@
 # CODEX: Keep source and documentation line endings stable across development machines.
 * text=auto eol=lf
+*.cmd text eol=crlf
 
 # CODEX: Font and image assets are binary and must never receive text normalization.
 *.woff2 binary

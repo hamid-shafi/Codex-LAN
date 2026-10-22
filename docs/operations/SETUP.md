@@ -3,6 +3,12 @@
 The browser-based LAN app and the optional GTK desktop app are separate installs.
 These instructions install the LAN host. Use a normal desktop account, not root.
 
+Prefer a guided start? Run `bash setup.sh` and choose your role. Missing Python
+does not prevent the menu from opening. `bash setup.sh prerequisites` offers OS
+package help; `bash setup.sh codex` handles the official standalone installer.
+Both require explicit approval before installing. See [getting started](../getting-started/README.md)
+and [dependency boundaries](../getting-started/DEPENDENCIES.md).
+
 ## Requirements
 
 - Linux with a working systemd user session and CPython 3.10 or newer.
@@ -32,10 +38,10 @@ Clone or extract the source into any directory, then run from that directory:
 
 ```bash
 python3 project.py host --check
-bash setup.sh
+bash setup.sh host
 ```
 
-`setup.sh` creates a private Python environment, installs requirements from PyPI,
+The host action creates a private Python environment, installs requirements from PyPI,
 installs user services, starts the new host, and opens the local admin browser.
 All executable and home paths are detected for the current Linux account.
 It does not require a prebuilt `.lan-wheels` directory or a file in `/tmp`.
@@ -92,6 +98,11 @@ devices. Read-only controls can restrict individual turns.
 The offline Connector currently targets Linux x86_64 and standard CPython
 3.10–3.14. ARM64 and free-threaded Python are not included in the bundled client
 installer; setup reports that limitation rather than downloading a wrong binary.
+
+Windows users can enroll in a native browser before installing WSL. Their local
+Connector uses [WSL2 Ubuntu](WINDOWS-WSL.md). Teams outside the office LAN can use
+an [administrator-provisioned SSH relay](SSH-RELAY.md); the application and history
+stay on the awake laptop. These are connection paths, not public app hosting.
 
 ## Offline and advanced commands
 
