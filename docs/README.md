@@ -10,7 +10,7 @@ shared workplace product.
 - **Getting started:** [host, teammate, or relay](getting-started/README.md) and
   [dependencies / offline preparation](getting-started/DEPENDENCIES.md).
 - **[Architecture](architecture/REPOSITORY.md):** source organization and the
-  technical designs, including the earlier desktop/client-server work.
+  optional desktop app's component boundaries.
 - **Operations:** [setup](operations/SETUP.md), [migration](operations/MIGRATION.md),
   [Windows/WSL](operations/WINDOWS-WSL.md), [SSH relay](operations/SSH-RELAY.md),
   [release updates](operations/LAN-RELEASES.md), and

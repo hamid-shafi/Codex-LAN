@@ -7,12 +7,12 @@ Run workflows from the checkout with the same Python environment used for the
 workspace:
 
 ```sh
-python3 project.py test test_project_layout test_publication_tools -q
-python3 project.py test test_lan_server test_lan_store -q
-python3 project.py check
+python3 development/project.py test test_project_layout test_publication_tools -q
+python3 development/project.py test test_lan_server test_lan_store -q
+python3 development/project.py check
 ```
 
-`python3 project.py test` discovers the full suite. Browser checks need their
+`python3 development/project.py test` discovers the full suite. Browser checks need their
 browser dependencies; desktop checks additionally need GTK and a display or
 headless display. See [contributing](../.github/CONTRIBUTING.md) and the
 [repository guide](../docs/architecture/REPOSITORY.md).

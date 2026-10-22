@@ -9,6 +9,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+# Keep the checkout boundary importable when invoked from any directory.
+checkout_root = Path(__file__).resolve().parents[1]
+if str(checkout_root) not in sys.path:
+    sys.path.insert(0, str(checkout_root))
+
 from project_layout import configure_imports, source_file
 
 

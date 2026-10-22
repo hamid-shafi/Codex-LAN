@@ -61,7 +61,7 @@ host wheelhouse outside the repository:
 
 ```bash
 python3 -m pip download --only-binary=:all: -r apps/workspace/requirements.txt --dest /path/to/wheels
-python3 project.py host --wheels /path/to/wheels
+python3 development/project.py host --wheels /path/to/wheels
 ```
 
 The second command installs without starting services. Add `--start --open` when
@@ -70,7 +70,7 @@ prerequisites to have been installed separately. Use your distribution's trusted
 offline package workflow for those; do not download random Python executables.
 
 The host's **Prepare Connector** action packages its own offline client runtime
-dependencies. `python3 project.py connector --offline` reuses a complete cache
+dependencies. `python3 development/project.py connector --offline` reuses a complete cache
 from a previous preparation. Neither path removes the need for networking to
 reach the host, SSH relay, or model provider during normal use.
 

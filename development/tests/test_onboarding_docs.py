@@ -16,7 +16,7 @@ PAGES = (
     "docs/operations/SETUP.md", "docs/operations/SSH-RELAY.md",
     "docs/operations/WINDOWS-WSL.md", "docs/operations/PUBLISHING.md",
     "docs/getting-started/README.md", "docs/getting-started/DEPENDENCIES.md",
-    "docs/product/FEATURES.md", "docs/product/OVERVIEW.md",
+    "docs/product/OVERVIEW.md",
 )
 
 

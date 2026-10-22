@@ -7,7 +7,7 @@ import sys
 import tempfile
 import unittest
 
-SCRIPT = Path(__file__).resolve().parents[2] / 'setup/connector/connect_ssh_relay.sh'
+SCRIPT = Path(__file__).resolve().parents[2] / 'setup/relay/connect_ssh_relay.sh'
 
 
 class RelayShellTests(unittest.TestCase):

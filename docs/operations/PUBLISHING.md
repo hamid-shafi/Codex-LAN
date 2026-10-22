@@ -14,9 +14,9 @@ change that choice. Preserve the bundled notices in
 Run these checks from the source checkout:
 
 ```bash
-python3 project.py check
-python3 project.py check --history
-python3 project.py test test_publication_tools -v
+python3 development/project.py check
+python3 development/project.py check --history
+python3 development/project.py test test_publication_tools -v
 git diff --check
 ```
 
@@ -33,7 +33,7 @@ If old local history contains personal information, do not push that history.
 Make a clean export into a new directory:
 
 ```bash
-python3 project.py check --export ../codex-lan-personal-source
+python3 development/project.py check --export ../codex-lan-personal-source
 cd ../codex-lan-personal-source
 git init -b main
 git config user.name 'Your chosen author name'
@@ -41,7 +41,7 @@ git config user.email 'YOUR_GITHUB_NOREPLY_ADDRESS'
 git add .
 git diff --cached --stat
 git commit -m 'Initial reviewed source'
-python3 project.py check --history --allow-identity-metadata
+python3 development/project.py check --history --allow-identity-metadata
 ```
 
 Choose a GitHub no-reply address in your GitHub account settings if you do not
@@ -83,7 +83,7 @@ under the local application-data directory, outside this checkout. A screenshot
 of that report must stay private too.
 
 Private history migration is a separate opt-in operation using
-`python3 project.py backup`. Do not add its archive or any restored database to Git,
+`python3 development/project.py backup`. Do not add its archive or any restored database to Git,
 release assets, public issue attachments, or the clean source export.
 
 ## Installation-specific provider networking

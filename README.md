@@ -2,69 +2,52 @@
 
 ### Your Codex. Your team. Their own computers.
 
-Turn a Linux laptop or workstation into a shared coding workspace for approved
-coworkers. Keep the Codex sign-in and conversations on the host; teammates join
-in a browser and use a Connector to work with files on their own computers.
+Share a Linux host's Codex with approved coworkers. Everyone gets their own rooms
+and can work on files on their own computer through a Connector. The host keeps
+the Codex sign-in and conversation data; an optional SSH relay carries only the
+connection.
 
-**At the office or through an SSH relay:** the relay carries the connection,
-not your database or your Codex credentials. The host must stay awake and online.
+## Start here
 
-## Start with your role
-
-| I want to… | Start here |
+| Your role | First step |
 | --- | --- |
-| **Host a workspace** on my Linux computer | Run `bash setup.sh` → Host · [Host guide](docs/operations/SETUP.md) |
-| **Join my team's workspace** | Open the address from your administrator → **Connect a new computer** → **Request access** · [Join guide](docs/getting-started/README.md#join-a-team) |
-| **Connect from Windows** | Extract the repository, then double-click [`setup/windows/start.cmd`](setup/windows/start.cmd) · [Windows / WSL](docs/operations/WINDOWS-WSL.md) |
-| **Reach a laptop through a server** | Use the administrator's restricted SSH login · [Relay guide](docs/operations/SSH-RELAY.md) |
+| **Host** on Linux | Run `bash setup.sh`, choose **Host**, then finish in **Administration → Host setup**. |
+| **Join a team** | Open your host's HTTPS address → **Connect a new computer** → **Request access**. |
+| **Use Windows** | Extract the ZIP and double-click [`setup/windows/start.cmd`](setup/windows/start.cmd). |
+| **Connect through a server** | Ask the host for a restricted SSH login and follow the [relay guide](docs/operations/SSH-RELAY.md). |
 
-**Downloaded the source?** Open [`docs/getting-started/index.html`](docs/getting-started/index.html)
-locally for a guided start page—no Python, web server, or Internet needed to read it.
-On GitHub, use the [Getting started guide](docs/getting-started/README.md).
+[Short setup guide](docs/getting-started/README.md) ·
+[Offline start page](docs/getting-started/index.html) ·
+[Dependencies and offline limits](docs/getting-started/DEPENDENCIES.md)
 
-Missing Python or Codex? The setup menu includes prerequisite checks and optional
-installation helpers. It explains changes before asking for confirmation.
-First-time downloads still need Internet access; this is not a bundled operating
-system or an offline model. [What is included?](docs/getting-started/DEPENDENCIES.md)
+## Why teams use it
 
-## Built for a working team
+- Share the assistant **without sharing its credentials**. Approve devices,
+  set usage limits, and revoke access.
+- Keep independent rooms, models, thinking levels, workspaces, read-only turns,
+  files, drafts, and **Send update** during a response.
+- Explore selected text in a resizable Side thread or persistent More details.
+- Revisit tool Activity, public Progress logs, available Prepared context,
+  and per-response usage reports.
+- Use multilingual LTR/RTL content, Markdown/math, notifications, and
+  reduced-motion-aware themes and effects.
 
-- **Controlled sharing:** approve devices, assign usage limits, revoke access;
-  teammates never need the host's sign-in credentials.
-- **Independent work:** rooms, model/thinking/speed settings, read-only turns,
-  attachments, and **Send update** while a response is running.
-- **Explore without losing your place:** resizable Side threads and floating
-  More details, with saved drafts and history across reloads.
-- **See what happened:** streaming Activity, preserved public Progress logs,
-  available Prepared context, and per-response usage reports.
-- **A considered interface:** themes, Markdown/math, multilingual LTR/RTL,
-  keyboard navigation, unread indicators, and focus-aware notifications.
+[Product overview and features](docs/product/OVERVIEW.md) ·
+[The story with Hamid](docs/product/STORY.md)
 
-[Feature details](docs/product/FEATURES.md) · [The one-page overview](docs/product/OVERVIEW.md)
-· [The story: built with Hamid](docs/product/STORY.md)
+## Source map
 
-## A small map
+`apps/` is the product; `setup/` installs and connects it; `docs/` explains
+it; `development/` holds tests and maintainer tools. `setup.sh` is the Linux
+entry point. [Repository map](docs/architecture/REPOSITORY.md).
 
-| Folder | What's inside |
-| --- | --- |
-| [`setup/`](setup/README.md) | Install, connect, update, and back up |
-| [`apps/`](apps/) | Shared workspace and optional desktop app |
-| [`docs/`](docs/README.md) | Getting started, product, architecture, and operations |
-| [`development/`](development/README.md) | Tests and maintainer tools |
+Codex LAN is for **authorized, trusted coworkers**, not public hosting or
+isolation of untrusted tenants. Full-access turns can run commands as the
+relevant OS user. Usage percentages are estimates, not official billing.
+Private chats, credentials, pairing data, and generated installers stay outside
+Git. The project is independent of OpenAI; no project-wide license has been
+granted.
 
-`setup.sh` is the Linux entry point. `project.py` and `project_layout.py` support
-developer commands and stable installed paths. [Repository guide](docs/architecture/REPOSITORY.md).
-
-## Trust comes first
-
-For authorized, trusted coworkers—not public hosting or isolation between
-untrusted tenants. Full-access turns can execute commands as the relevant OS
-user. Use only within your organization's and provider's access rules.
-Usage percentages are estimates, not official per-user billing.
-
-Databases, chats, uploads, pairing files, certificates, and credentials stay
-outside Git. This is an independent project, not an OpenAI product. No
-project-wide license has been granted.
-
-[Security](.github/SECURITY.md) · [Contributing](.github/CONTRIBUTING.md)
-· [Third-party notices](docs/legal/THIRD_PARTY_NOTICES.md)
+[Security](.github/SECURITY.md) ·
+[Contributing](.github/CONTRIBUTING.md) ·
+[Third-party notices](docs/legal/THIRD_PARTY_NOTICES.md)

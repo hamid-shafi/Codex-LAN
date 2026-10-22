@@ -17,7 +17,7 @@ from project_layout import configure_imports, source_file, source_root
 
 configure_imports(__file__)
 
-import project
+from development import project
 
 
 class ProductSourceTests(unittest.TestCase):
@@ -60,7 +60,7 @@ class ProjectCommandTests(unittest.TestCase):
     def run_project(self, *arguments, cwd):
         environment = {**os.environ, "PYTHONPATH": ""}
         return subprocess.run(
-            [sys.executable, str(ROOT / "project.py"), *arguments],
+            [sys.executable, str(ROOT / "development/project.py"), *arguments],
             cwd=cwd, env=environment, capture_output=True, text=True, timeout=30,
         )
 

@@ -9,8 +9,8 @@ outside the checkout in the user's local application-data directory.
 Before making a source repository public, run:
 
 ```bash
-python3 project.py check
-python3 project.py check --history
+python3 development/project.py check
+python3 development/project.py check --history
 ```
 
 The first command scans the current tracked source and non-ignored new files.
@@ -34,7 +34,7 @@ If local history contains personal paths, machine addresses, author email, or
 private files, keep that original checkout private and export reviewed source:
 
 ```bash
-python3 project.py check --export ../codex-lan-public
+python3 development/project.py check --export ../codex-lan-public
 ```
 
 The export creates a new directory without `.git`, ignored runtime files, or

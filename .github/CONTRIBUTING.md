@@ -8,7 +8,7 @@ The installation and network setup are documented in [README.md](../README.md).
 Before submitting changes:
 
 ```bash
-python3 project.py check
+python3 development/project.py check
 git diff --check
 ```
 
@@ -19,8 +19,8 @@ tests require the distribution's GTK/PyGObject packages. Do not use a real
 provider login or live user conversations as fixtures.
 
 The [repository guide](../docs/architecture/REPOSITORY.md) explains the product-first
-source layout. Use `python3 project.py test` for full unittest discovery, or
-`python3 project.py test test_lan_server -q` for a specific test module. The runner
+source layout. Use `python3 development/project.py test` for full unittest discovery, or
+`python3 development/project.py test test_lan_server -q` for a specific test module. The runner
 sets the source import paths for both apps, setup commands, and development tools.
 
 Backend updates must wait for active prompts to finish. Use the documented

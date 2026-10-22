@@ -27,7 +27,8 @@ class GuidedSetupTests(unittest.TestCase):
         (self.checkout / "setup/bootstrap").mkdir(parents=True)
         (self.checkout / "setup/host").mkdir()
         (self.checkout / "setup/connector").mkdir()
-        for name in ("setup.sh", "setup/bootstrap/linux.sh", "setup/connector/connect_ssh_relay.sh"):
+        (self.checkout / "setup/relay").mkdir()
+        for name in ("setup.sh", "setup/bootstrap/linux.sh", "setup/relay/connect_ssh_relay.sh"):
             shutil.copy2(ROOT / name, self.checkout / name)
         (self.checkout / "setup/host/setup.sh").write_text(
             '#!/bin/bash\nprintf "host" >> "$SETUP_TEST_LOG"\n'

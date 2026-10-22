@@ -117,8 +117,8 @@ files inside that directory.
 ## Pre-install verification
 
 ```bash
-python3 project.py test -v
-python3 project.py desktop --check
+python3 development/project.py test -v
+python3 development/project.py desktop --check
 PYTHONPATH=apps/desktop:apps/workspace:development python3 development/tests/visual_smoke.py night /tmp/codex-night.png
 PYTHONPATH=apps/desktop:apps/workspace:development python3 development/tests/visual_smoke.py light /tmp/codex-light.png
 PYTHONPATH=apps/desktop:apps/workspace:development python3 development/tests/visual_smoke.py graphite /tmp/codex-graphite.png

@@ -334,7 +334,7 @@ setup_main() {
         team)
             (($# == 0)) || { printf '%s\n' 'Usage: bash setup.sh team' >&2; return 2; }
             team_help ;;
-        relay) exec bash "$codex_setup_root/setup/connector/connect_ssh_relay.sh" "$@" ;;
+        relay) exec bash "$codex_setup_root/setup/relay/connect_ssh_relay.sh" "$@" ;;
         check)
             (($# == 0)) || { printf '%s\n' 'Usage: bash setup.sh check' >&2; return 2; }
             host_setup --check ;;

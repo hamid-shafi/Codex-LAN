@@ -31,7 +31,7 @@ SQLite's backup API rather than copying a live database/WAL blindly. It does not
 change or restart the source service.
 
 ```bash
-python3 project.py backup \
+python3 development/project.py backup \
   --output "$HOME/.local/share/codex-lan-private-backups/private-history-before-laptop.tar.gz"
 ```
 

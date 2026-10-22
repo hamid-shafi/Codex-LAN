@@ -15,18 +15,19 @@ setup/
   windows/             Native Windows getting-started launcher
   host/                New-host installation and HTTPS setup
   connector/           Connector installation and launch helpers
+  relay/               SSH tunnel and CA-trust helpers
   release-tools/       Bundle building, publication, and guarded activation
   maintenance/         Private history backup and repair helpers
 docs/
   getting-started/      Role-based guide and offline HTML start page
   product/             Product overview and development story
-  architecture/        Component boundaries and historical designs
+  architecture/        Source map and desktop component boundaries
   operations/          Setup, migration, releases, and source publication
   legal/               Third-party notices
 development/
+  project.py           Source-checkout command runner
   tests/               Synthetic unit, integration, and browser checks
   tools/               Publication checks and developer utilities
-project.py             Source-checkout command runner
 setup.sh               Guided Linux start (host, team, relay, prerequisites)
 ```
 
@@ -39,18 +40,18 @@ retain their familiar names; the folders supply their product and workflow conte
 
 ## Commands from the checkout
 
-Run `project.py` with the Python environment containing the workspace dependencies.
+Run `development/project.py` with the Python environment containing the workspace dependencies.
 It supplies the import paths for the workspace, desktop app, setup helpers, and
 development tools. These commands work from the checkout root:
 
 ```bash
-python3 project.py host --check
+python3 development/project.py host --check
 bash setup.sh
-python3 project.py test
-python3 project.py test test_lan_server -q
-python3 project.py check
-python3 project.py check --history
-python3 project.py desktop --check
+python3 development/project.py test
+python3 development/project.py test test_lan_server -q
+python3 development/project.py check
+python3 development/project.py check --history
+python3 development/project.py desktop --check
 ```
 
 `test` forwards unittest arguments; without arguments it discovers

@@ -7,6 +7,7 @@
 | [Bootstrap](bootstrap/) | Python-independent Linux prerequisite and official Codex helpers |
 | [Host](host/) | First-run installation, HTTPS, and the browser setup screen |
 | [Connector](connector/) | Teammates' native clients and pairing installers |
+| [Relay](relay/) | SSH tunnel and CA-trust helpers for remote teammates |
 | [Release tools](release-tools/) | Build and publish verified Connector releases |
 | [Maintenance](maintenance/) | Guarded updates, backups, and targeted repairs |
 

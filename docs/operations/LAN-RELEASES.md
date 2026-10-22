@@ -153,7 +153,7 @@ Work from the project checkout and run the relevant tests first.
 Browser-only changes:
 
 ```bash
-.venv-lan/bin/python project.py web
+.venv-lan/bin/python development/project.py web
 ```
 
 Users only need to reload Chrome. No connector reinstall is required.
@@ -161,7 +161,7 @@ Users only need to reload Chrome. No connector reinstall is required.
 Backend or protocol changes:
 
 ```bash
-.venv-lan/bin/python project.py backend
+.venv-lan/bin/python development/project.py backend
 ```
 
 This queues `codex-lan-backend-update.service` as a separate transient user service. It waits until all queued/running prompts finish, takes a database backup, and then activates the backend and host worker without being killed with the worker it is replacing. Do not manually restart these services during a prompt. Follow an activation with `journalctl --user -fu codex-lan-backend-update.service`. The updater retains old files and checks the loopback and configured HTTPS endpoints. An incompatible client protocol change also requires publishing a connector release.
@@ -173,7 +173,7 @@ Connector changes:
 3. Publish:
 
    ```bash
-   .venv-lan/bin/python project.py release
+   .venv-lan/bin/python development/project.py release
    ```
 
 4. Clients choose **Check/install update** from **Codex Connector**. The update is downloaded over verified HTTPS, checked against the release checksum, prepared separately, and activated only after that computer's prompts finish. The previous release is retained for rollback. Chrome reload alone cannot update a locally installed connector.
