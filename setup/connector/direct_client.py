@@ -66,7 +66,7 @@ def validate_runtime(version=None, system=None, machine=None, implementation=Non
     implementation = sys.implementation.name if implementation is None else implementation
     abi = getattr(sys, "abiflags", "") if abi is None else abi
     if system != "linux" or machine.lower() not in {"x86_64", "amd64"}:
-        raise ConnectorError("This connector supports Ubuntu/Linux on x86-64 computers. Ask for an installer matching this computer.")
+        raise ConnectorError("This connector supports Ubuntu/Linux on x86-64 computers. On Windows, use Ubuntu on WSL 2, not PowerShell or Git Bash. Other architectures need a matching installer.")
     if implementation != "cpython" or not (3, 10) <= version <= (3, 14) or "t" in abi:
         raise ConnectorError("This offline connector supports standard CPython 3.10 through 3.14. Use Ubuntu's regular Python interpreter; free-threaded builds need a different dependency package.")
     return version

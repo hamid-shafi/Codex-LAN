@@ -217,6 +217,43 @@ class PairingTests(unittest.TestCase):
         path.write_text(json.dumps(value))
         return value
 
+    def test_missing_user_manager_is_bounded_and_gives_wsl_instructions(self):
+        failures = (FileNotFoundError("systemctl"), subprocess.CalledProcessError(1, ["systemctl"]),
+                    subprocess.TimeoutExpired(["systemctl"], 10))
+        with mock.patch("setup_lan_direct.platform.release", return_value="6.6-microsoft-standard-WSL2"):
+            for failure in failures:
+                with self.subTest(failure=type(failure).__name__):
+                    runner = mock.Mock(side_effect=failure)
+                    with self.assertRaisesRegex(client.ConnectorError, "/etc/wsl.conf"):
+                        setup.require_user_service(runner)
+                    runner.assert_called_once_with(
+                        ["systemctl", "--user", "show-environment"], check=True,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+
+    def test_no_user_manager_does_not_claim_pairing_or_write_installation(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch("setup_lan_direct.Transport"):
+            home = Path(directory)
+            pair = home / "pair.json"
+            self.pairing(pair)
+            source = payload(home / "source")
+            root = home / "installed"
+            runner = mock.Mock(side_effect=subprocess.CalledProcessError(1, ["systemctl"]))
+            with mock.patch("setup_lan_direct.install_release") as install, \
+                    mock.patch("setup_lan_direct.claim_pairing") as claim, \
+                    self.assertRaisesRegex(client.ConnectorError, "systemd user session"):
+                setup.install(source, pair, root, runner=runner, allow=lambda _server: True)
+            install.assert_not_called()
+            claim.assert_not_called()
+            self.assertFalse(root.exists())
+
+    def test_update_checks_user_manager_before_modifying_installation(self):
+        runner = mock.Mock(side_effect=FileNotFoundError("systemctl"))
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch("setup_lan_direct.private_write") as write, \
+                self.assertRaisesRegex(client.ConnectorError, "systemd user session"):
+            setup.update_existing(Path(directory) / "not-installed", runner=runner)
+        write.assert_not_called()
+
     def test_expired_pairing_and_consent_rejection_do_not_claim(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch("setup_lan_direct.Transport"):
             root = Path(directory)

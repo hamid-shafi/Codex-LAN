@@ -1,4 +1,4 @@
-"""CODEX: Validate optional private-LAN HTTPS configuration without weakening loopback access."""
+"""CODEX: Validate HTTPS on an explicit private interface or the SSH tunnel loopback."""
 
 from __future__ import annotations
 
@@ -14,19 +14,21 @@ from typing import Any
 PRIVATE_NETWORKS = tuple(ipaddress.IPv4Network(value) for value in (
     "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
 ))
+# CODEX: A separate loopback host isolates client cookies from their local 127.0.0.1 workspace.
+SSH_TUNNEL_ADDRESS = "127.0.0.2"
 NETWORK_FIELDS = {"lan_address", "port", "cert", "key", "ca", "public_origin"}
 
 
 def validate_address(address: str) -> str:
-    """CODEX: Allow one explicit RFC1918 IPv4 interface, never a wildcard or public address."""
+    """CODEX: Allow RFC1918 or exactly 127.0.0.2 for SSH; reject wildcard/public binds."""
     if not isinstance(address, str):
-        raise ValueError("LAN address must be an explicit private IPv4 address")
+        raise ValueError("HTTPS address must be an explicit private IPv4 address or 127.0.0.2 for SSH tunnels")
     try:
         parsed = ipaddress.IPv4Address(address)
     except (ValueError, TypeError):
-        raise ValueError("LAN address must be an explicit private IPv4 address") from None
-    if not any(parsed in network for network in PRIVATE_NETWORKS):
-        raise ValueError("LAN address must be within 10/8, 172.16/12, or 192.168/16")
+        raise ValueError("HTTPS address must be an explicit private IPv4 address or 127.0.0.2 for SSH tunnels") from None
+    if str(parsed) != SSH_TUNNEL_ADDRESS and not any(parsed in network for network in PRIVATE_NETWORKS):
+        raise ValueError("HTTPS address must be within 10/8, 172.16/12, 192.168/16, or exactly 127.0.0.2")
     return str(parsed)
 
 
@@ -72,7 +74,7 @@ def load_network(data_dir: Path) -> dict[str, Any] | None:
     port = validate_port(raw["port"])
     origin = f"https://{address}:{port}"
     if raw["public_origin"] != origin:
-        raise ValueError("HTTPS public_origin must exactly match its private address and port")
+        raise ValueError("HTTPS public_origin must exactly match its configured address and port")
     config: dict[str, Any] = {"lan_address": address, "port": port, "public_origin": origin}
     for name in ("cert", "key", "ca"):
         if not isinstance(raw[name], str) or not raw[name]:

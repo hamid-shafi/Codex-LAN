@@ -18,7 +18,7 @@ from pathlib import Path
 from aiohttp import web
 
 from . import __version__
-from .network import check_file, ssl_context, validate_address, validate_port
+from .network import SSH_TUNNEL_ADDRESS, check_file, ssl_context, validate_address, validate_port
 
 
 UNITS = (
@@ -48,7 +48,9 @@ def lan_addresses():
                 for item in interface.get("addr_info", []):
                     if item.get("family") == "inet":
                         try:
-                            addresses.add(validate_address(item.get("local")))
+                            address = validate_address(item.get("local"))
+                            if address != SSH_TUNNEL_ADDRESS:
+                                addresses.add(address)
                         except ValueError:
                             pass
         except (ValueError, TypeError, AttributeError):
@@ -123,6 +125,7 @@ class HostSetup:
                 self.cached_at = time.monotonic()
         system = self.cached
         network = self.service.network
+        tunnel_https = network is not None and network["lan_address"] == SSH_TUNNEL_ADDRESS
         fingerprint = None
         if network:
             from .https_setup import ca_fingerprint
@@ -145,13 +148,15 @@ class HostSetup:
             ("enable_startup", "Enable automatic startup", "Start the host services when you sign in.", self.supported),
             ("keep_awake_on", "Keep host awake", "Prevent system sleep while allowing display-off and screen lock.", self.supported and bool(shutil.which("systemd-inhibit"))),
             ("keep_awake_off", "Allow system sleep", "Connections stop while the host is asleep.", self.supported),
-            ("configure_https", "Set up LAN HTTPS", "Choose a private address on this computer and share its CA certificate.", self.runner is not None and bool(shutil.which("openssl"))),
+            ("configure_https", "Set up HTTPS", "Choose a private LAN address or SSH tunnel access and share its CA certificate.", self.runner is not None and bool(shutil.which("openssl"))),
             ("prepare_connector", "Prepare Connector download", "Build a credential-free installer for Linux clients; internet is needed for dependencies.", self.helper_available()),
         ]
         notices = ["Only trusted people should be approved: their requests can run tools on their connected computers.",
                    "Display-off and screen lock are allowed. System sleep interrupts network access.",
                    "Startup here runs after host sign-in. Running after logout or before sign-in may require Linux linger permission.",
-                   "Use your LAN HTTPS address on other computers and verify the CA fingerprint before trusting it."]
+                   "Use the configured HTTPS address on each computer and verify the CA fingerprint before trusting it."]
+        if tunnel_https:
+            notices.append("SSH tunnel access: each client must forward the same loopback HTTPS port to this host and keep its tunnel connected. Use the same HTTPS address in the browser and Connector.")
         if not self.helper_available():
             notices.append("Connector build tools are missing. Run the repository's setup entrypoint on this host once.")
         return {"supported": self.supported, "version": __version__,
@@ -160,8 +165,11 @@ class HostSetup:
                             "local_origin": f"http://127.0.0.1:{self.loopback_port}",
                             "public_origin": network["public_origin"] if network else None,
                             "https_enabled": self.https_site is not None,
+                            "https_transport": ("ssh_tunnel" if tunnel_https else "private_lan") if network else None,
                             "port_https": network["port"] if network else 8767,
-                            "lan_addresses": system["lan_addresses"], "ca_fingerprint": fingerprint},
+                            "lan_addresses": system["lan_addresses"],
+                            "https_addresses": [*system["lan_addresses"], SSH_TUNNEL_ADDRESS],
+                            "ca_fingerprint": fingerprint},
                 "services": system["services"],
                 "keep_awake": {"active": next(item["active"] for item in system["services"] if item["id"] == "codex-lan-stay-awake.service"),
                                "supported": self.supported and bool(shutil.which("systemd-inhibit"))},
@@ -213,8 +221,8 @@ class HostSetup:
             raise ValueError("This setup action is unavailable on this host.")
         if action == "configure_https":
             address, port = validate_address(payload.get("address")), validate_port(payload.get("port", 8767))
-            if address not in await asyncio.to_thread(lan_addresses):
-                raise ValueError("Choose a private address currently assigned to this host.")
+            if address != SSH_TUNNEL_ADDRESS and address not in await asyncio.to_thread(lan_addresses):
+                raise ValueError("Choose a private address currently assigned to this host or 127.0.0.2 for SSH tunnels.")
             payload = {"action": action, "address": address, "port": port}
         self.job = {"action": action, "status": "running", "message": "Host setup is running."}
         self.task = asyncio.create_task(self._perform(payload), name="codex-lan-host-setup")
@@ -239,7 +247,9 @@ class HostSetup:
                         if (current.st_dev, current.st_ino, current.st_mtime_ns) == (metadata.st_dev, metadata.st_ino, metadata.st_mtime_ns) and filename.read_bytes() == content:
                             filename.unlink()
                     raise
-                message = "LAN HTTPS is ready. Download the CA certificate and verify its fingerprint on each client."
+                message = ("SSH tunnel HTTPS is ready. Forward the same loopback port on each client and verify the CA certificate fingerprint."
+                           if config["lan_address"] == SSH_TUNNEL_ADDRESS else
+                           "LAN HTTPS is ready. Download the CA certificate and verify its fingerprint on each client.")
             elif action == "prepare_connector":
                 if not self.helper_available():
                     raise ValueError("The installed Connector build helper is unavailable.")
@@ -294,7 +304,7 @@ class HostSetup:
     def ca_response(self):
         network = self.service.network
         if not network:
-            raise web.HTTPNotFound(text="LAN HTTPS has not been configured.")
+            raise web.HTTPNotFound(text="HTTPS has not been configured.")
         check_file(network["ca"])
         return web.FileResponse(network["ca"], headers={"Content-Type": "application/x-x509-ca-cert",
                                                       "Content-Disposition": 'attachment; filename="Codex-LAN-CA.crt"'})

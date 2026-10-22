@@ -30,6 +30,27 @@ class HostSetupTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn(self.admin["token"], json.dumps(result))
             self.assertFalse(result["connector"]["available"])
             self.assertEqual(set(result["codex"]), {"available", "signed_in"})
+            self.assertEqual(result["network"]["https_addresses"], ["192.168.1.20", "127.0.0.2"])
+            self.assertIsNone(result["network"]["https_transport"])
+
+    async def test_ssh_tunnel_https_is_explicit_even_without_lan_interfaces(self):
+        setup = self.service.host_setup
+        setup.runner = object()
+        config = {"lan_address": "127.0.0.2", "port": 8767, "public_origin": "https://127.0.0.2:8767",
+                  "ca": self.service.data_dir / "tls/ca.pem"}
+        with patch("codex_lan.host_setup.system_status", return_value={**SYSTEM, "lan_addresses": []}), \
+                patch("codex_lan.host_setup.lan_addresses", return_value=[]), \
+                patch.object(setup, "_perform", new_callable=AsyncMock) as perform:
+            payload = {"action": "configure_https", "address": "127.0.0.2", "port": 8767}
+            await self.request("POST", "/api/admin/host-setup", self.admin, expected=202, json=payload)
+            await setup.task
+            perform.assert_awaited_once_with(payload)
+            self.service.network = config
+            status = await self.request("GET", "/api/admin/host-setup", self.admin)
+            self.assertEqual(status["network"]["https_transport"], "ssh_tunnel")
+            self.assertEqual(status["network"]["https_addresses"], ["127.0.0.2"])
+            self.assertEqual(status["network"]["lan_addresses"], [])
+            self.assertIn("SSH tunnel access", " ".join(status["notices"]))
 
     async def test_malformed_release_manifest_does_not_break_setup(self):
         release = self.service.data_dir / "releases"
@@ -62,6 +83,8 @@ class HostSetupTests(unittest.IsolatedAsyncioTestCase):
             for payload in ({"action": "restart"}, {"action": "enable_startup", "command": "touch unsafe"},
                             {"action": "configure_https", "address": "192.168.1.99", "port": 8767},
                             {"action": "configure_https", "address": "0.0.0.0", "port": 8767},
+                            {"action": "configure_https", "address": "127.0.0.1", "port": 8767},
+                            {"action": "configure_https", "address": "127.0.0.3", "port": 8767},
                             {"action": "configure_https", "address": "192.168.1.20", "port": 8765}):
                 await self.request("POST", "/api/admin/host-setup", self.admin, expected=400, json=payload)
             self.assertIsNone(setup.task)

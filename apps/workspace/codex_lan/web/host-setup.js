@@ -93,7 +93,10 @@ window.CodexHostSetup = (() => {
     const shared = origin(network.public_origin);
     if (shared) {
       address(connection, shared, "shared host address");
-      connection.addNote("Share this address with computers on the same local network. Each person requests access, then you approve their device.");
+      if (network.https_transport === "ssh_tunnel") {
+        connection.addRow("Access", "SSH tunnel");
+        connection.addNote("Each computer forwards this loopback HTTPS address through its SSH tunnel. Keep the tunnel connected for the browser and Connector. Each person requests access, then you approve their device.");
+      } else connection.addNote("Share this address with computers on the same local network. Each person requests access, then you approve their device.");
     } else connection.addNote("Configure HTTPS below to get an address other computers can open.");
     const local = origin(network.local_origin);
     if (local && local !== shared) address(connection, local, "local host address");
@@ -160,13 +163,14 @@ window.CodexHostSetup = (() => {
     form.hidden = !configure;
     byId("host-setup-https-help").textContent = data.network?.https_enabled
       ? "HTTPS is configured. Existing address, port and certificate identity are preserved. Use the configured address and port to recheck; changing them is not supported here."
-      : "Choose this computer’s local-network address. Other computers use the HTTPS address after setup. Trust the downloaded host certificate on each client.";
-    const addresses = Array.isArray(data.network?.lan_addresses) ? data.network.lan_addresses.filter((value) => typeof value === "string" && value) : [];
+      : "Choose a local-network address or SSH tunnel access. For SSH, each computer must forward the same loopback address and HTTPS port. Trust the downloaded host certificate on each client.";
+    const available = data.network?.https_addresses ?? data.network?.lan_addresses;
+    const addresses = Array.isArray(available) ? available.filter((value) => typeof value === "string" && value) : [];
     const select = byId("host-setup-address");
     const chosen = select.value;
     if (JSON.stringify([...select.options].map((item) => item.value)) !== JSON.stringify(addresses)) {
       select.replaceChildren(...addresses.map((value) => {
-        const option = node("option", "", value);
+        const option = node("option", "", value === "127.0.0.2" ? `${value} · SSH tunnel` : value);
         option.value = value;
         return option;
       }));
@@ -235,7 +239,8 @@ window.CodexHostSetup = (() => {
       event.preventDefault();
       const address = byId("host-setup-address").value;
       const port = Number(byId("host-setup-port").value);
-      if (!snapshot?.network?.lan_addresses?.includes(address) || !Number.isInteger(port) || port < 1024 || port > 65535 || port === 8765) {
+      const addresses = snapshot?.network?.https_addresses ?? snapshot?.network?.lan_addresses;
+      if (!addresses?.includes(address) || !Number.isInteger(port) || port < 1024 || port > 65535 || port === 8765) {
         setStatus("Choose a local host address and a port between 1024 and 65535, other than backend port 8765.", true);
         return;
       }

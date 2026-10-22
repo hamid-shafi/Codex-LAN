@@ -31,10 +31,10 @@ class LanNetworkConfigTests(unittest.TestCase):
             self.assertIsNone(load_network(path))
             self.assertEqual(list(path.iterdir()), [])
 
-    def test_only_explicit_private_ipv4_and_separate_high_port_are_allowed(self):
-        for address in ("10.1.2.3", "172.16.0.2", "172.31.255.254", "192.168.1.56"):
+    def test_only_private_ipv4_or_exact_ssh_loopback_and_separate_high_port_are_allowed(self):
+        for address in ("10.1.2.3", "172.16.0.2", "172.31.255.254", "192.168.1.56", "127.0.0.2"):
             self.assertEqual(validate_address(address), address)
-        for address in ("0.0.0.0", "127.0.0.1", "8.8.8.8", "169.254.1.1", "172.32.0.1", "192.0.2.1", "localhost", "::1", "fc00::1", "192.168.1.2/24", 3232235777):
+        for address in ("0.0.0.0", "127.0.0.1", "127.0.0.3", "127.1.2.3", "8.8.8.8", "169.254.1.1", "172.32.0.1", "192.0.2.1", "localhost", "::1", "fc00::1", "192.168.1.2/24", 3232235777):
             with self.subTest(address=address), self.assertRaises(ValueError):
                 validate_address(address)
         self.assertEqual(validate_port(8767), 8767)
@@ -62,6 +62,21 @@ class LanNetworkConfigTests(unittest.TestCase):
             self.assertNotIn("PRIVATE KEY", result.stdout + result.stderr)
             with self.assertRaisesRegex(ValueError, "preserved"):
                 prepare_network(path, "192.168.1.57")
+
+    def test_cli_prepares_ssh_loopback_and_preserves_its_certificate_identity(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            command = [sys.executable, str(source_file(Path(__file__).resolve().parents[2], "setup_lan_https.py")),
+                       "--data-dir", temporary, "--address", "127.0.0.2", "--port", "8767"]
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("SSH tunnel mode", result.stdout)
+            self.assertIn("https://127.0.0.2:8767", result.stdout)
+            config = load_network(Path(temporary))
+            fingerprint = ca_fingerprint(config["ca"])
+            repeated = prepare_network(Path(temporary), "127.0.0.2", 8767)
+            self.assertEqual(config, repeated)
+            self.assertEqual(fingerprint, ca_fingerprint(repeated["ca"]))
+            self.assertNotIn("PRIVATE KEY", result.stdout + result.stderr)
 
     def test_missing_server_certificate_is_rebuilt_without_replacing_keys(self):
         with tempfile.TemporaryDirectory() as temporary:

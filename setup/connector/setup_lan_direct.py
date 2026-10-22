@@ -88,6 +88,27 @@ def working_directory(value):
     return value.replace("%", "%%")
 
 
+def user_service_help():
+    message = "Codex Connector needs a working systemd user session. Run it as your normal Linux user, without sudo."
+    if "microsoft" in platform.release().lower() or os.environ.get("WSL_DISTRO_NAME"):
+        message += (" In WSL, use Ubuntu on WSL 2 with systemd enabled in /etc/wsl.conf."
+                    " Save your work before restarting the distro, then verify: systemctl --user show-environment."
+                    " Keep the WSL SSH tunnel terminal open while using the Connector."
+                    " See https://learn.microsoft.com/en-us/windows/wsl/systemd")
+    return message
+
+
+def require_user_service(runner=subprocess.run):
+    """Check the user manager before claiming pairing or changing an installation."""
+    try:
+        result = runner(["systemctl", "--user", "show-environment"], check=True,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        if result.returncode:
+            raise ConnectorError(user_service_help())
+    except (OSError, subprocess.SubprocessError):
+        raise ConnectorError(user_service_help()) from None
+
+
 def service_unit(root, server, home):
     root, home = Path(root), Path(home)
     command = ["/usr/bin/env", "--", str(root / "current/venv/bin/python"), "-m", "codex_lan.worker", "--server", server,
@@ -135,7 +156,7 @@ def install(source, pair_file, root=ROOT, no_launch=False, runner=subprocess.run
     unit = service_unit(root, pairing["server"], Path.home())
     if not allow(pairing["server"]):
         raise ConnectorError("Local access was not allowed. No pairing code was claimed.")
-    runner(["systemctl", "--user", "show-environment"], check=True, stdout=subprocess.DEVNULL)
+    require_user_service(runner)
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     root.chmod(0o700)
     release = install_release(source, root, version, runner)
@@ -158,6 +179,7 @@ def install(source, pair_file, root=ROOT, no_launch=False, runner=subprocess.run
 def update_existing(root, runner=subprocess.run, connector_class=Connector):
     """CODEX: Bootstrap an old updater without replacing its approved device identity."""
     validate_runtime()
+    require_user_service(runner)
     root = Path(root).absolute()
     reject_duplicate_host_identity((root / "device.token").read_bytes())
     connector = connector_class(root)
@@ -185,7 +207,7 @@ def repair_pairing(source, pair_file, root=ROOT, no_launch=False, runner=subproc
         raise ConnectorError("This pairing file belongs to a different server. Remove the old connector explicitly before migrating servers.")
     if not allow(pairing["server"]):
         raise ConnectorError("Local access was not allowed. No pairing code was claimed.")
-    runner(["systemctl", "--user", "show-environment"], check=True, stdout=subprocess.DEVNULL)
+    require_user_service(runner)
     current = (root / "current").resolve()
     prepared = current if payload_version(current) == version else install_release(source, root, version, runner)
     unit_path = Path.home() / ".config/systemd/user/codex-lan-direct.service"
@@ -261,7 +283,7 @@ def main():
     except ConnectorError as exc:
         parser.error(str(exc))
     if not shutil.which("systemctl"):
-        parser.error("systemd user services are required")
+        parser.error(user_service_help())
     pair_file = args.pair_file
     already_paired = (args.root / "config.json").is_file() and (args.root / "device.token").is_file()
     if pair_file is None and not already_paired:

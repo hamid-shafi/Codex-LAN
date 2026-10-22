@@ -152,6 +152,19 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("secret@", await self.page.locator("#host-setup").inner_text())
         self.assertFalse(self.errors, self.errors)
 
+    async def test_ssh_loopback_is_labelled_and_submitted_as_an_explicit_choice(self):
+        await self.open_setup()
+        self.setup["network"].update(public_origin="https://127.0.0.2:8767", https_transport="ssh_tunnel",
+                                     https_addresses=["192.168.1.20", "127.0.0.2"])
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-cards")).to_contain_text("Keep the tunnel connected")
+        await self.page.locator("#host-setup-address").select_option("127.0.0.2")
+        await expect(self.page.locator('#host-setup-address option[value="127.0.0.2"]')).to_have_text("127.0.0.2 · SSH tunnel")
+        await self.page.locator("#host-setup-https-submit").click()
+        await expect(self.page.locator("#host-setup-status")).to_have_text("Setup request accepted.")
+        self.assertEqual(self.actions, [{"action": "configure_https", "address": "127.0.0.2", "port": 8767}])
+        self.assertFalse(self.errors, self.errors)
+
 
 if __name__ == "__main__":
     unittest.main()

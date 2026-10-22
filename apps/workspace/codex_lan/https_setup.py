@@ -1,4 +1,4 @@
-"""CODEX: Prepare private-LAN TLS certificates without starting or restarting any service."""
+"""CODEX: Prepare private-LAN or SSH-loopback TLS without starting or restarting services."""
 
 from __future__ import annotations
 
