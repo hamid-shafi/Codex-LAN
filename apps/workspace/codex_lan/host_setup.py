@@ -18,6 +18,7 @@ from pathlib import Path
 from aiohttp import web
 
 from . import __version__
+from . import relay_setup
 from .network import SSH_TUNNEL_ADDRESS, check_file, ssl_context, validate_address, validate_port
 
 
@@ -100,6 +101,7 @@ class HostSetup:
         self.cached_at = 0
         self.status_lock = asyncio.Lock()
         self.action_lock = asyncio.Lock()
+        self.bootstrap_retry_at = 0
 
     @property
     def supported(self):
@@ -121,9 +123,14 @@ class HostSetup:
     async def status(self):
         async with self.status_lock:
             if self.cached is None or time.monotonic() - self.cached_at > 5:
-                self.cached = await asyncio.to_thread(system_status)
+                system, relay = await asyncio.gather(
+                    asyncio.to_thread(system_status),
+                    asyncio.to_thread(relay_setup.status, self.service.data_dir),
+                )
+                self.cached = {**system, "relay": relay}
                 self.cached_at = time.monotonic()
         system = self.cached
+        relay = system["relay"]
         network = self.service.network
         tunnel_https = network is not None and network["lan_address"] == SSH_TUNNEL_ADDRESS
         fingerprint = None
@@ -150,6 +157,11 @@ class HostSetup:
             ("keep_awake_off", "Allow system sleep", "Connections stop while the host is asleep.", self.supported),
             ("configure_https", "Set up HTTPS", "Choose a private LAN address or SSH tunnel access and share its CA certificate.", self.runner is not None and bool(shutil.which("openssl"))),
             ("prepare_connector", "Prepare Connector download", "Build a credential-free installer for Linux clients; internet is needed for dependencies.", self.helper_available()),
+            ("probe_relay", "Inspect SSH host key", "Read an untrusted fingerprint; verify it through the relay administrator before entering a password.", relay["supported"]),
+            ("bootstrap_relay", "Set up SSH relay", "Use the relay root password once to create a restricted key-only account.", relay["supported"] and relay["bootstrap_available"] and tunnel_https and self.https_site is not None),
+            ("configure_relay", "Change SSH relay", "Switch to an already trusted, key-authorized relay server.", relay["supported"] and tunnel_https and self.https_site is not None),
+            ("relay_connect", "Connect SSH relay", "Enable automatic key-only reconnection.", relay["supported"] and relay["configured"] and relay["manageable"] and tunnel_https and self.https_site is not None),
+            ("relay_disconnect", "Disconnect SSH relay", "Stop and disable automatic reconnection without stopping local chat.", relay["supported"] and relay["configured"] and relay["manageable"]),
         ]
         notices = ["Only trusted people should be approved: their requests can run tools on their connected computers.",
                    "Display-off and screen lock are allowed. System sleep interrupts network access.",
@@ -175,7 +187,7 @@ class HostSetup:
                                "supported": self.supported and bool(shutil.which("systemd-inhibit"))},
                 "connector": {"available": bool(release.get("version") and (self.service.data_dir / "releases/client.tar.gz").is_file()),
                               "version": str(release.get("version", ""))[:40]},
-                "codex": codex, "active_runs": active, "job": self.job,
+                "codex": codex, "relay": relay, "active_runs": active, "job": self.job,
                 "actions": [{"id": key, "label": label, "description": description,
                              "enabled": enabled and not busy,
                              "reason": "Another setup operation is running." if busy else "Prerequisites are missing." if not enabled else ""}
@@ -209,9 +221,15 @@ class HostSetup:
 
     async def _execute(self, payload):
         action = payload.get("action")
-        if action not in {"enable_startup", "keep_awake_on", "keep_awake_off", "configure_https", "prepare_connector"}:
+        if action not in {"enable_startup", "keep_awake_on", "keep_awake_off", "configure_https", "prepare_connector",
+                          "probe_relay", "bootstrap_relay", "configure_relay", "relay_connect", "relay_disconnect"}:
             raise ValueError("Unsupported host setup action.")
-        allowed = {"action", "address", "port"} if action == "configure_https" else {"action"}
+        allowed = ({"action", "address", "port"} if action == "configure_https" else
+                   {"action", "server"} if action == "probe_relay" else
+                   {"action", "admin_user", "server", "password", "host_key_fingerprint", "replace_existing"}
+                   if action == "bootstrap_relay" else
+                   {"action", "server", "user", "replace_existing"} if action == "configure_relay" else
+                   {"action"})
         if set(payload) - allowed:
             raise ValueError("Unexpected host setup fields.")
         if self.task is not None and not self.task.done():
@@ -219,6 +237,24 @@ class HostSetup:
         status = await self.status()
         if not next(item["enabled"] for item in status["actions"] if item["id"] == action):
             raise ValueError("This setup action is unavailable on this host.")
+        if action == "probe_relay":
+            relay_setup.validate_server(payload.get("server"))
+        elif action == "bootstrap_relay":
+            if time.monotonic() < self.bootstrap_retry_at:
+                raise web.HTTPTooManyRequests(text="Wait one minute before another password setup attempt.")
+            relay_setup.validate_server(payload.get("server"))
+            relay_setup.validate_user(payload.get("admin_user"), bootstrap=True)
+            relay_setup.validate_fingerprint(payload.get("host_key_fingerprint"))
+            if not isinstance(payload.get("password"), str) or not 1 <= len(payload["password"]) <= 1024:
+                raise ValueError("Enter the one-time relay administrator password.")
+            if not isinstance(payload.get("replace_existing", False), bool):
+                raise ValueError("Invalid relay migration confirmation.")
+            self.bootstrap_retry_at = time.monotonic() + 60
+        elif action == "configure_relay":
+            relay_setup.validate_server(payload.get("server"))
+            relay_setup.validate_user(payload.get("user"))
+            if not isinstance(payload.get("replace_existing", False), bool):
+                raise ValueError("Invalid relay migration confirmation.")
         if action == "configure_https":
             address, port = validate_address(payload.get("address")), validate_port(payload.get("port", 8767))
             if address != SSH_TUNNEL_ADDRESS and address not in await asyncio.to_thread(lan_addresses):
@@ -231,7 +267,29 @@ class HostSetup:
     async def _perform(self, payload):
         action = payload["action"]
         try:
-            if action == "configure_https":
+            if action == "probe_relay":
+                _, fingerprint = await asyncio.to_thread(relay_setup.probe_host, payload["server"])
+                self.job = {"action": action, "status": "completed", "message": "SSH host key observed. Verify it independently before using a password.",
+                            "result": {"host_key_fingerprint": fingerprint}}
+                return
+            elif action == "bootstrap_relay":
+                await asyncio.to_thread(relay_setup.bootstrap, self.service.data_dir,
+                                        server=payload["server"], admin_user=payload["admin_user"],
+                                        password=payload["password"], host_key_fingerprint=payload["host_key_fingerprint"],
+                                        replace_existing=payload.get("replace_existing", False))
+                message = "A restricted key-only relay account was prepared and the publisher tunnel enabled."
+            elif action == "configure_relay":
+                await asyncio.to_thread(relay_setup.configure, self.service.data_dir,
+                                        server=payload["server"], user=payload["user"],
+                                        replace_existing=payload.get("replace_existing", False))
+                message = "The publisher tunnel is now configured for the verified relay."
+            elif action == "relay_connect":
+                await asyncio.to_thread(relay_setup.connect)
+                message = "The relay service is enabled and connecting. Remote browser reachability is not independently verified."
+            elif action == "relay_disconnect":
+                await asyncio.to_thread(relay_setup.disconnect)
+                message = "The relay service is disabled and stopped. Local chat remains available."
+            elif action == "configure_https":
                 from .https_setup import prepare_network
                 filename = self.service.data_dir / "network.json"
                 existed = filename.exists() or filename.is_symlink()

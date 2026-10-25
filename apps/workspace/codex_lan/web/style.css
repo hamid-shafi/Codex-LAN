@@ -1028,10 +1028,47 @@ h1, h2, h3, p { margin-top: 0; }
 .host-setup-https-fields label { display: grid; gap: 7px; font-size: 12px; color: var(--muted); flex: 1 1 150px; }
 .host-setup-https-fields select, .host-setup-https-fields input { width: 100%; min-width: 0; }
 .host-setup-https-fields label[for="host-setup-port"] { flex: 0 1 120px; }
+.host-setup-relay { margin-top: 18px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.host-setup-relay-heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px 20px; }
+.host-setup-relay-heading h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.host-setup-relay-heading p, .host-setup-relay-security { color: var(--muted); font-size: 12px; line-height: 1.7; margin: 6px 0 0; }
+.host-setup-relay-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; padding: 12px 0; margin: 13px 0; border-block: 1px solid var(--line); }
+.host-setup-relay-details:empty { display: none; }
+.host-setup-relay-detail { display: flex; justify-content: space-between; gap: 12px; min-width: 0; font-size: 12px; line-height: 1.6; }
+.host-setup-relay-detail span:first-child { color: var(--muted); }
+.host-setup-relay-detail span:last-child { text-align: end; overflow-wrap: anywhere; }
+.host-setup-relay-fields { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.host-setup-relay-fields label, .host-setup-relay-fingerprint { display: grid; gap: 7px; flex: 1 1 190px; min-width: 0; font-size: 12px; color: var(--muted); }
+.host-setup-relay-fields input, .host-setup-relay-fingerprint input { width: 100%; min-width: 0; }
+.host-setup-relay-migration { display: flex; align-items: flex-start; gap: 9px; margin-top: 13px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.host-setup-relay-migration[hidden] { display: none; }
+.host-setup-relay-migration input { flex: 0 0 auto; margin-top: 3px; }
+.host-setup-relay-key { margin-top: 15px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--soft); }
+.host-setup-relay-key p { margin: 0 0 9px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.host-setup-relay-key-row { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.host-setup-relay-key-row code { flex: 1 1 360px; min-width: 0; font-size: 11px; overflow-wrap: anywhere; user-select: all; }
+.host-setup-relay-key-row .button { flex: 0 0 auto; }
+.host-setup-relay-controls { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+.host-setup-relay-controls .button { min-width: 110px; }
+.host-setup-relay-bootstrap { margin-top: 17px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.host-setup-relay-bootstrap summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.host-setup-relay-bootstrap > p { margin: 10px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.host-setup-relay-bootstrap .host-setup-relay-prerequisite { color: var(--danger); }
+.host-setup-relay-bootstrap form { display: grid; gap: 12px; }
+.host-setup-relay-bootstrap .field-hint { margin: -5px 0 0; line-height: 1.65; }
+.host-setup-relay-bootstrap .field-hint code { overflow-wrap: anywhere; }
+.host-setup-relay-probe { flex: 1 1 220px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.host-setup-relay-probe span { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.host-setup-relay-confirm { display: flex; align-items: flex-start; gap: 9px; font-size: 12px; line-height: 1.6; }
+.host-setup-relay-confirm input { flex: 0 0 auto; margin-top: 3px; }
+.host-setup-relay-bootstrap form > .button { justify-self: start; }
 @media (max-width: 720px) {
   .host-setup-cards, .host-setup-actions { grid-template-columns: minmax(0, 1fr); }
   .host-setup-card { padding: 16px; }
   .host-setup-prerequisite .host-setup-rows { grid-template-columns: minmax(0, 1fr); }
+  .host-setup-relay { padding: 16px; }
+  .host-setup-relay-details { grid-template-columns: minmax(0, 1fr); }
+  .host-setup-relay-fields .button { width: 100%; }
 }
 .usage-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 35px; }
 .summary-card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 17px; }

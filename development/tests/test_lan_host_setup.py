@@ -33,6 +33,28 @@ class HostSetupTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result["network"]["https_addresses"], ["192.168.1.20", "127.0.0.2"])
             self.assertIsNone(result["network"]["https_transport"])
 
+    async def test_relay_bootstrap_is_admin_only_and_never_echoes_password(self):
+        setup = self.service.host_setup
+        self.service.network = {"lan_address": "127.0.0.2", "port": 8767,
+                                "public_origin": "https://127.0.0.2:8767", "ca": self.service.data_dir / "ca.pem"}
+        setup.https_site = object()
+        relay = {"supported": True, "bootstrap_available": True, "configured": False,
+                 "manageable": True, "active": False, "enabled": False, "public_key": None}
+        payload = {"action": "bootstrap_relay", "admin_user": "root", "server": "relay.example",
+                   "password": "example-password", "host_key_fingerprint": "SHA256:" + "A" * 43}
+        with patch("codex_lan.host_setup.system_status", return_value=SYSTEM), \
+                patch("codex_lan.host_setup.relay_setup.status", return_value=relay), \
+                patch("codex_lan.host_setup.relay_setup.bootstrap") as bootstrap:
+            await self.request("POST", "/api/admin/host-setup", self.a, expected=403, json=payload)
+            bootstrap.assert_not_called()
+            response = await self.request("POST", "/api/admin/host-setup", self.admin, expected=202, json=payload)
+            self.assertNotIn(payload["password"], json.dumps(response))
+            await setup.task
+            result = await self.request("GET", "/api/admin/host-setup", self.admin)
+            self.assertNotIn(payload["password"], json.dumps(result))
+            self.assertEqual(setup.job["status"], "completed")
+            bootstrap.assert_called_once()
+
     async def test_ssh_tunnel_https_is_explicit_even_without_lan_interfaces(self):
         setup = self.service.host_setup
         setup.runner = object()

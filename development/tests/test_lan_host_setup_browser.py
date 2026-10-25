@@ -165,6 +165,112 @@ class LanHostSetupBrowserTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.actions, [{"action": "configure_https", "address": "127.0.0.2", "port": 8767}])
         self.assertFalse(self.errors, self.errors)
 
+    async def test_relay_status_controls_and_one_time_password_are_not_retained(self):
+        await self.open_setup()
+        self.setup["network"]["https_transport"] = "ssh_tunnel"
+        self.setup["actions"].extend({"id": action, "enabled": True} for action in (
+            "configure_relay", "relay_connect", "relay_disconnect", "probe_relay", "bootstrap_relay"
+        ))
+        self.setup["relay"] = {
+            "supported": True, "manageable": True, "managed": True, "configured": True,
+            "enabled": False, "active": False, "state": "inactive",
+            "user": "codex-lan-relay", "server": "relay.example.test",
+            "remote_port": 18767, "local_origin": "https://127.0.0.2:8767",
+            "public_key": "ssh-ed25519 " + "A" * 60 + " codex-lan-relay",
+            "auth_method": "ssh_key", "password_saved": False, "bootstrap_available": True,
+        }
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-relay-badge")).to_have_text("Disconnected")
+        await expect(self.page.locator("#host-setup-relay-details")).to_contain_text("Automatic reconnect")
+        await expect(self.page.locator("#host-setup-relay-server")).to_have_value("relay.example.test")
+        await self.page.locator("#host-setup-relay-connect").click()
+        self.assertEqual(self.actions[-1], {"action": "relay_connect"})
+        self.setup["relay"].update(enabled=True, active=True)
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-relay-badge")).to_have_text("Tunnel running")
+        await expect(self.page.locator("#host-setup-relay-connect")).to_be_disabled()
+
+        await self.page.locator("#host-setup-relay-bootstrap summary").click()
+        await expect(self.page.locator("#host-setup-relay-admin-user")).to_have_value("root")
+        await self.page.locator("#host-setup-relay-password").fill("example-password")
+        await self.page.locator("#host-setup-relay-bootstrap summary").click()
+        await expect(self.page.locator("#host-setup-relay-password")).to_have_value("")
+        await self.page.locator("#host-setup-relay-bootstrap summary").click()
+        await self.page.locator("#host-setup-relay-probe").click()
+        self.assertEqual(self.actions[-1], {"action": "probe_relay", "server": "relay.example.test"})
+        presented = "SHA256:" + "A" * 43
+        verified = "SHA256:" + "B" * 43
+        self.setup["job"] = {"action": "probe_relay", "status": "completed", "result": {"host_key_fingerprint": presented}}
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-relay-observed")).to_contain_text(presented)
+        await expect(self.page.locator("#host-setup-relay-fingerprint")).to_have_value("")
+        await self.page.locator("#host-setup-relay-fingerprint").fill(verified)
+        await self.page.locator("#host-setup-relay-password").fill("example-password")
+        await self.page.locator("#host-setup-relay-confirm").check()
+        await self.page.locator("#host-setup-relay-bootstrap-submit").click()
+        self.assertEqual(self.actions[-1], {
+            "action": "bootstrap_relay", "admin_user": "root", "server": "relay.example.test",
+            "password": "example-password", "host_key_fingerprint": verified,
+        })
+        await expect(self.page.locator("#host-setup-relay-password")).to_have_value("")
+        self.assertNotIn("example-password", await self.page.locator("#host-setup").inner_text())
+        self.assertNotIn("example-password", self.page.url)
+        self.assertFalse(await self.page.evaluate("JSON.stringify([localStorage, sessionStorage]).includes('example-password')"))
+        await self.page.locator("#host-setup-relay-password").fill("must-clear-when-panel-closes")
+        await self.page.locator("#admin-devices-open").click()
+        await expect(self.page.locator("#host-setup")).to_be_hidden()
+        await expect(self.page.locator("#host-setup-relay-password")).to_have_value("")
+        await self.page.locator("#host-setup-open").click()
+        for width in (390, 768, 1365):
+            await self.page.set_viewport_size({"width": width, "height": 900})
+            self.assertTrue(await self.page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_existing_relay_requires_explicit_migration_consent(self):
+        await self.open_setup()
+        self.setup["network"]["https_transport"] = "ssh_tunnel"
+        self.setup["actions"].extend({"id": action, "enabled": True} for action in (
+            "configure_relay", "relay_connect", "relay_disconnect", "probe_relay", "bootstrap_relay"
+        ))
+        self.setup["relay"] = {
+            "supported": True, "manageable": True, "managed": False, "configured": True,
+            "enabled": True, "active": True, "state": "active",
+            "user": "root", "server": "legacy.example.test", "bootstrap_available": True,
+        }
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-relay-migration")).to_be_visible()
+        await expect(self.page.locator("#host-setup-relay-save")).to_be_disabled()
+        await expect(self.page.locator("#host-setup-relay-disconnect")).to_be_enabled()
+        await self.page.locator("#host-setup-relay-replace-existing").check()
+        await expect(self.page.locator("#host-setup-relay-save")).to_be_enabled()
+        await self.page.locator("#host-setup-relay-server").fill("new.example.test")
+        await self.page.locator("#host-setup-relay-save").click()
+        self.assertEqual(self.actions[-1], {
+            "action": "configure_relay", "user": "codex-lan-relay", "server": "new.example.test",
+            "replace_existing": True,
+        })
+        await expect(self.page.locator("#host-setup-relay-replace-existing")).not_to_be_checked()
+        self.assertFalse(self.errors, self.errors)
+
+    async def test_relay_bootstrap_prerequisites_disable_password_entry(self):
+        await self.open_setup()
+        self.setup["relay"] = {
+            "supported": True, "manageable": True, "managed": True, "configured": False,
+            "enabled": False, "active": False, "bootstrap_available": False,
+        }
+        self.setup["actions"].extend({"id": action, "enabled": False} for action in (
+            "bootstrap_relay", "configure_relay"
+        ))
+        await self.page.evaluate("refreshAdmin()")
+        await self.page.locator("#host-setup-relay-bootstrap summary").click()
+        await expect(self.page.locator("#host-setup-relay-bootstrap-submit")).to_be_disabled()
+        await expect(self.page.locator("#host-setup-relay-password")).to_be_disabled()
+        await expect(self.page.locator("#host-setup-relay-prerequisite")).to_contain_text("Set up HTTPS")
+        self.setup["network"]["https_transport"] = "ssh_tunnel"
+        await self.page.evaluate("refreshAdmin()")
+        await expect(self.page.locator("#host-setup-relay-prerequisite")).to_contain_text("sshpass")
+        self.assertFalse(self.errors, self.errors)
+
 
 if __name__ == "__main__":
     unittest.main()

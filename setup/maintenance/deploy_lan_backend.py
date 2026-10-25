@@ -29,7 +29,7 @@ else:
     def source_file(root, name):
         return Path(root) / name
 
-FILES = ("__init__.py", "activity.py", "auth.py", "provider_usage.py", "usage_estimator.py", "quota_accounting.py", "network.py", "https_setup.py", "host_setup.py", "request_keys.py", "client_access.py", "model_registry.py", "runtime.py", "store.py", "worker.py", "server.py", "host_worker.py", "health_monitor.py", "media.py", "egress.py", "recovery.py", "transport.py", "systemd_watchdog.py", "companions.py", "migrate.py", "open_browser.py")
+FILES = ("__init__.py", "activity.py", "auth.py", "provider_usage.py", "usage_estimator.py", "quota_accounting.py", "network.py", "https_setup.py", "host_setup.py", "relay_setup.py", "request_keys.py", "client_access.py", "model_registry.py", "runtime.py", "store.py", "worker.py", "server.py", "host_worker.py", "health_monitor.py", "media.py", "egress.py", "recovery.py", "transport.py", "systemd_watchdog.py", "companions.py", "migrate.py", "open_browser.py")
 SERVICE = "codex-lan-server.service"
 WORKER_SERVICE = "codex-lan-host-worker.service"
 HEALTH_MONITOR_SERVICE = "codex-lan-health-monitor.service"
