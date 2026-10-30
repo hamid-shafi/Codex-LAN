@@ -45,6 +45,7 @@ MAX_WS_BYTES = 8 * 1024 * 1024
 MAX_FORWARDED_COMMAND_OUTPUT = 65536
 MAX_AUTOMATIC_RECOVERY_TURNS = 1
 MAX_ARTIFACT_TRANSFERS = 4
+MAX_AGENT_THREADS_PER_SESSION = 10
 ARTIFACT_STORE_CAPABILITY = "artifact-store-v1"
 FILE_ATTACHMENTS_CAPABILITY = "file-attachments-v1"
 OUTPUT_OMITTED = "\n… [additional command output omitted]\n"
@@ -354,6 +355,8 @@ class CodexAppServer:
             str(self.codex),
             "app-server",
             "--stdio",
+            "--config",
+            f"agents.max_concurrent_threads_per_session={MAX_AGENT_THREADS_PER_SESSION}",
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,

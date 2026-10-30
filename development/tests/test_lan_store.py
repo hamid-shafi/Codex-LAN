@@ -925,7 +925,11 @@ class LanStoreTests(unittest.TestCase):
         for fields in ({"owner_id": self.b_id}, {"id": "new"}, {}):
             with self.assertRaises(ValueError):
                 self.store.update_room(self.a_id, room["id"], **fields)
-        for kwargs in ({"max_concurrent": 0}, {"max_concurrent": 11}, {"token_budget": -1}, {"status": "admin"}):
+        self.assertEqual(
+            self.store.set_device(self.admin_id, self.a_id, max_concurrent=25)["max_concurrent"],
+            25,
+        )
+        for kwargs in ({"max_concurrent": 0}, {"max_concurrent": 2 ** 63}, {"token_budget": -1}, {"status": "admin"}):
             with self.assertRaises(ValueError):
                 self.store.set_device(self.admin_id, self.a_id, **kwargs)
         with self.assertRaises(ValueError):

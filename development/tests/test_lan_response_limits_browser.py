@@ -56,6 +56,20 @@ class LanResponseLimitsBrowserTests(unittest.IsolatedAsyncioTestCase):
                 "dialog => dialog.scrollWidth <= dialog.clientWidth + 1"), f"Device detail overflows at {width}px")
         self.assertFalse(self.errors, self.errors)
 
+    async def test_concurrent_response_setting_has_no_ten_response_cap(self):
+        card = await self.open_limits()
+        concurrency = card.get_by_label("Concurrent responses")
+        self.assertIsNone(await concurrency.get_attribute("max"))
+        await concurrency.fill("25")
+        async with self.page.expect_request(lambda request: request.method == "PATCH"
+                                            and request.url.endswith(f"/api/admin/devices/{self.client_id}")) as pending:
+            await card.get_by_role("button", name="Save limits").click()
+        request = await pending.value
+        self.assertEqual(request.post_data_json["max_concurrent"], 25)
+        await expect(card.get_by_role("button", name="Save limits")).to_be_enabled()
+        self.assertEqual(self.service.store.get_device(self.client_id)["max_concurrent"], 25)
+        self.assertFalse(self.errors, self.errors)
+
     async def test_refresh_preserves_checkbox_draft_and_updates_clean_value(self):
         card = await self.open_limits()
         checkbox = card.get_by_role("checkbox", name="Limit each response", exact=True)

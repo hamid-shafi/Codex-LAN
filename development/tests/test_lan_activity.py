@@ -147,6 +147,17 @@ class ActivityTests(unittest.TestCase):
         query = log.item({"id": "s", "type": "webSearch", "query": "official app-server docs"})
         self.assertIn("official app-server docs", query["title"])
 
+    def test_agent_activity_includes_more_than_ten_agent_states(self):
+        agents = {f"agent-{index}": {"status": f"state-{index}"} for index in range(12)}
+        entry = normalize_item({
+            "id": "collaboration",
+            "type": "collabToolCall",
+            "tool": "wait_agent",
+            "agentsStates": agents,
+        })
+        self.assertIn("state-0", entry["detail"])
+        self.assertIn("state-11", entry["detail"])
+
     def test_dynamic_and_mcp_extract_text_not_binary_or_json(self):
         for kind in ("dynamicToolCall", "mcpToolCall"):
             log = ActivityLog()

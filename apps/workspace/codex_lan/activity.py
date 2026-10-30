@@ -263,8 +263,12 @@ def normalize_item(item, completed=False):
         result.update(kind="agent", title="Agent: " + action)
         agents = item.get("agentsStates") or {}
         if isinstance(agents, dict):
-            states = [str(state.get("status", "")) for state in list(agents.values())[:10] if isinstance(state, dict)]
-            result["detail"] = ", ".join(filter(None, states))
+            states = [
+                _plain(state.get("status"), 80)
+                for state in agents.values()
+                if isinstance(state, dict)
+            ]
+            result["detail"] = _plain(", ".join(filter(None, states)), MAX_DETAIL)
         if item.get("agentPath"):
             result["detail"] = _plain(item["agentPath"], 300)
     elif kind == "webSearch":

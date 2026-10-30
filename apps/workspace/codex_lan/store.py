@@ -880,7 +880,9 @@ class Store(CompanionStoreMixin):
                     raise ValueError("Approved or rejected devices cannot return to pending")
                 changes["status"] = status
             if max_concurrent is not None:
-                changes["max_concurrent"] = self._count(max_concurrent, "concurrency", 1, 10)
+                changes["max_concurrent"] = self._count(
+                    max_concurrent, "concurrency", 1, MAX_INTEGER
+                )
             if token_budget is not _UNSET:
                 changes["token_budget"] = None if token_budget is None else self._count(token_budget, "token budget", maximum=MAX_INTEGER)
             if weekly_share_percent is not _UNSET:

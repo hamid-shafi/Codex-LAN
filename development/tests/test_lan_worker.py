@@ -27,6 +27,7 @@ from codex_lan.worker import (
     DeviceAccessError,
     JsonChannel,
     MAX_FORWARDED_COMMAND_OUTPUT,
+    MAX_AGENT_THREADS_PER_SESSION,
     MAX_WS_BYTES,
     OUTPUT_OMITTED,
     PayloadLimitError,
@@ -354,6 +355,26 @@ for line in sys.stdin:
         path.write_text(source, encoding="utf-8")
         path.chmod(0o700)
         return path
+
+    async def test_app_server_launch_sets_the_session_agent_limit(self):
+        async def event(_method, _params):
+            return None
+
+        async def request(_identifier, _method, _params):
+            return None
+
+        app = CodexAppServer(
+            self.fake_codex(), self.root, self.root / "agent-limit-state", event, request
+        )
+        try:
+            await app.launch()
+            command = Path(f"/proc/{app.process.pid}/cmdline").read_bytes().split(b"\0")
+            self.assertIn(
+                f"agents.max_concurrent_threads_per_session={MAX_AGENT_THREADS_PER_SESSION}".encode(),
+                command,
+            )
+        finally:
+            await app.close()
 
     async def test_worker_relay_auth_refresh_approvals_upload_and_group_cleanup(self):
         device_token = "device-transport-secret"

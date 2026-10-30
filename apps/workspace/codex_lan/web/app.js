@@ -4052,8 +4052,8 @@ function createAdminDevice(device) {
     const amount = budget.input.value.trim() ? Number(budget.input.value) : null;
     const allocation = share.input.value.trim() ? Number(share.input.value) : null;
     const ownAdmin = card._device.role === "admin" && idOf(card._device.id) === idOf(state.me?.id);
-    if (!Number.isInteger(max) || max < 1 || max > 10 || (amount !== null && (!Number.isSafeInteger(amount) || amount < 0)) || (allocation !== null && (!Number.isFinite(allocation) || allocation < 0 || allocation > 100 || (ownAdmin && allocation === 0))) || share.input.validity.badInput || budget.input.validity.badInput) {
-      toast(ownAdmin ? "Use 1–10 concurrent responses, a personal target above 0 and up to 100%, and a non-negative whole-number lifetime token budget." : "Use 1–10 concurrent responses, a weekly share from 0 to 100%, and a non-negative whole-number lifetime token budget."); return;
+    if (!Number.isSafeInteger(max) || max < 1 || (amount !== null && (!Number.isSafeInteger(amount) || amount < 0)) || (allocation !== null && (!Number.isFinite(allocation) || allocation < 0 || allocation > 100 || (ownAdmin && allocation === 0))) || share.input.validity.badInput || budget.input.validity.badInput) {
+      toast(ownAdmin ? "Use a positive whole number of concurrent responses, a personal target above 0 and up to 100%, and a non-negative whole-number lifetime token budget." : "Use a positive whole number of concurrent responses, a weekly share from 0 to 100%, and a non-negative whole-number lifetime token budget."); return;
     }
     if (!ownAdmin && allocation !== null && allocation > 0 && !card._quotaReliable && !window.confirm("The weekly estimate is learning, stale, or incomplete. Saving this share starts tracking it now; new responses are blocked only at 0% or when a fresh calibrated measurement reaches the share. Save this limit?")) return;
     const values = Object.fromEntries(Object.entries(card._fields).map(([key, field]) => [key, fieldValue(field.input)]));
@@ -4450,7 +4450,7 @@ function renderAdmin(devices, usage, envelope = {}) {
 
 function limitField(id, label, value, placeholder, allowZero) {
   const wrapper = element("div", "limit-field"); const caption = element("label", "", label); caption.htmlFor = id;
-  const input = element("input"); input.id = id; input.type = "number"; input.min = allowZero ? "0" : "1"; if (!allowZero) input.max = "10"; input.step = "1"; input.value = value ?? ""; input.placeholder = placeholder;
+  const input = element("input"); input.id = id; input.type = "number"; input.min = allowZero ? "0" : "1"; input.step = "1"; input.value = value ?? ""; input.placeholder = placeholder;
   wrapper.append(caption, input); return { wrapper, input };
 }
 async function adminAction(button, path, method, body) {
