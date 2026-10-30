@@ -11,7 +11,7 @@ import test_lan_server as fixture
 
 SYSTEM = {"services": [
     {"id": name, "label": name, "active": True, "available": True, "enabled": True}
-    for name in ("codex-lan-server.service", "codex-lan-host-worker.service", "codex-lan-health-monitor.service", "codex-lan-stay-awake.service")
+    for name in ("codex-lan-server.service", "codex-lan-host-worker.service", "codex-lan-stay-awake.service")
 ], "lan_addresses": ["192.168.1.20"]}
 
 

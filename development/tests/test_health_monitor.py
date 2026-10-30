@@ -121,44 +121,20 @@ class HealthProbeTests(unittest.TestCase):
                 self.assertEqual(latest_event_id(database), 0)
             self.assertEqual(latest_event_id(database), 9)
 
-    def test_deploy_installs_monitor_disabled_until_activation_is_healthy(self):
+    def test_deploy_retires_legacy_monitor_without_failing_when_it_is_absent(self):
         calls = []
 
         def runner(command, **options):
             calls.append((command, options))
-            return subprocess.CompletedProcess(command, 0)
+            return subprocess.CompletedProcess(command, 5)
 
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            unit = deploy_lan_backend._install_health_monitor_unit(
-                installation=root / "installation", unit_directory=root / "units",
-                runner=runner, start=False,
-            )
-            content = unit.read_text()
-        self.assertIn("codex_lan.health_monitor", content)
-        self.assertIn("Restart=always", content)
-        self.assertIn('"--interval" "15"', content)
-        self.assertIn('"--timeout" "5"', content)
-        self.assertIn('"--failure-threshold" "4"', content)
-        self.assertIn('"--cooldown" "300"', content)
-        self.assertIn('"--active-stall-timeout" "60"', content)
-        self.assertEqual([call[0][2] for call in calls], ["daemon-reload", "enable"])
-
-    def test_deploy_restarts_only_monitor_after_healthy_activation(self):
-        calls = []
-
-        def runner(command, **options):
-            calls.append(command)
-            return subprocess.CompletedProcess(command, 0)
-
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            deploy_lan_backend._install_health_monitor_unit(
-                installation=root / "installation", unit_directory=root / "units",
-                runner=runner, start=True,
-            )
-        self.assertEqual(calls[-1], ["systemctl", "--user", "restart",
-                                    deploy_lan_backend.HEALTH_MONITOR_SERVICE])
+        result = deploy_lan_backend._retire_legacy_health_monitor(runner=runner)
+        self.assertEqual(result.returncode, 5)
+        self.assertEqual(calls, [
+            (["systemctl", "--user", "disable", "--now",
+              deploy_lan_backend.LEGACY_HEALTH_MONITOR_SERVICE],
+             {"check": False, "timeout": 30}),
+        ])
 
     def test_backend_deploy_upgrades_legacy_restart_policy_without_restarting_services(self):
         calls = []
@@ -180,7 +156,7 @@ class HealthProbeTests(unittest.TestCase):
             [f"{deploy_lan_backend.SERVICE}.d", f"{deploy_lan_backend.WORKER_SERVICE}.d"],
         )
         self.assertEqual(contents, [
-            "[Service]\nType=simple\nWatchdogSec=0\n"
+            "[Service]\nType=notify\nNotifyAccess=main\nWatchdogSec=90s\n"
             "TimeoutStartSec=300s\nTimeoutStopSec=20s\nRestart=always\nRestartSec=5\n",
             "[Service]\nRestart=always\nRestartSec=5\n",
         ])
@@ -205,14 +181,15 @@ class HealthProbeTests(unittest.TestCase):
                     unit_directory=units, runner=lambda *_args, **_options: None,
                 )
 
-    def test_fresh_install_orders_monitor_after_server_without_native_watchdog(self):
+    def test_fresh_install_uses_native_server_watchdog(self):
         unit = service_unit(
-            "codex-lan-health-monitor", ["/tmp/python", "-m", "codex_lan.health_monitor"],
+            "codex-lan-server", ["/tmp/python", "-m", "codex_lan.server"],
             Path("/tmp/code"),
         )
-        self.assertIn("After=network.target codex-lan-server.service", unit)
+        self.assertIn("After=network.target", unit)
+        self.assertIn("Type=notify", unit)
+        self.assertIn("WatchdogSec=90s", unit)
         self.assertIn("Restart=always", unit)
-        self.assertNotIn("WatchdogSec=", unit)
 
 
 class HealthMonitorTests(unittest.TestCase):

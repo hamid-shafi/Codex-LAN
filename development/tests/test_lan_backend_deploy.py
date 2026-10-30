@@ -98,6 +98,22 @@ class BackendDeploymentTests(unittest.TestCase):
         self.assertFalse(self.marker.exists())
         self.assertFalse(self.db.in_transaction)
 
+    def test_native_watchdog_policy_is_loaded_after_stop_and_before_first_start(self):
+        events = []
+
+        def action(command):
+            events.append(command)
+
+        def prepare_start():
+            events.append("watchdog-policy")
+            self.assertEqual((self.destination / "runtime.py").read_bytes(), b"new")
+
+        self.assertTrue(activate(
+            self.db, self.destination, {"runtime.py": b"new"}, {"runtime.py": b"old"},
+            action=action, check=lambda: True, prepare_start=prepare_start,
+        ))
+        self.assertEqual(events, ["stop", "watchdog-policy", "start"])
+
     def test_admission_marker_remains_through_start_and_health_verification(self):
         calls = []
 
@@ -546,11 +562,12 @@ class BackendDispatcherTests(unittest.TestCase):
             deploy_lan_backend, "INSTALLATION", self.installation,
         )
         self.installation_patch.start()
-        # CODEX: Keep dispatcher tests hermetic even if unit-install ordering regresses.
-        self.health_monitor_patch = patch.object(
-            deploy_lan_backend, "_install_health_monitor_unit",
+        # CODEX: Keep dispatcher tests from touching the real legacy user unit.
+        self.legacy_monitor_patch = patch.object(
+            deploy_lan_backend, "_retire_legacy_health_monitor",
+            return_value=subprocess.CompletedProcess([], 0),
         )
-        self.health_monitor_install = self.health_monitor_patch.start()
+        self.legacy_monitor_retire = self.legacy_monitor_patch.start()
         # CODEX: Prevent successful activation tests from reloading the real user manager.
         self.restart_policy_patch = patch.object(
             deploy_lan_backend, "_install_restart_policy_dropins",
@@ -559,7 +576,7 @@ class BackendDispatcherTests(unittest.TestCase):
 
     def tearDown(self):
         self.restart_policy_patch.stop()
-        self.health_monitor_patch.stop()
+        self.legacy_monitor_patch.stop()
         self.installation_patch.stop()
         self.temp.cleanup()
 
@@ -600,7 +617,7 @@ class BackendDispatcherTests(unittest.TestCase):
                 patch.object(deploy_lan_backend.subprocess, "run") as run, redirect_stdout(output):
             deploy_lan_backend._queue_activation()
         install.assert_called_once_with()
-        self.health_monitor_install.assert_not_called()
+        self.legacy_monitor_retire.assert_not_called()
         run.assert_called_once()
         command = run.call_args.args[0]
         self.assertEqual(command[:3], ["systemd-run", "--user", "--collect"])
@@ -746,7 +763,7 @@ class BackendDispatcherTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "matching helper"):
                     deploy_lan_backend._queue_activation()
             install.assert_not_called()
-            self.health_monitor_install.assert_not_called()
+            self.legacy_monitor_retire.assert_not_called()
             run.assert_called_once_with(
                 ["systemctl", "--user", "start", "--no-block", deploy_lan_backend.RECOVERY_SERVICE],
                 check=True, timeout=30,
@@ -761,7 +778,7 @@ class BackendDispatcherTests(unittest.TestCase):
                     self.assertRaisesRegex(RuntimeError, "already running"):
                 deploy_lan_backend._queue_activation()
         install.assert_not_called()
-        self.health_monitor_install.assert_not_called()
+        self.legacy_monitor_retire.assert_not_called()
         run.assert_not_called()
 
     def test_queue_rejects_intermediate_installation_symlink_without_side_effects(self):

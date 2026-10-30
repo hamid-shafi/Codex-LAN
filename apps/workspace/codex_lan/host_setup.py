@@ -25,9 +25,9 @@ from .network import SSH_TUNNEL_ADDRESS, check_file, ssl_context, validate_addre
 UNITS = (
     ("codex-lan-server.service", "Chat server"),
     ("codex-lan-host-worker.service", "Host Connector"),
-    ("codex-lan-health-monitor.service", "Connection recovery"),
     ("codex-lan-stay-awake.service", "Keep host awake"),
 )
+STARTUP_UNITS = tuple(item[0] for item in UNITS[:2])
 
 
 def command(*arguments):
@@ -342,7 +342,7 @@ class HostSetup:
                 elif action == "keep_awake_off":
                     commands = [("systemctl", "--user", "disable", "--now", "codex-lan-stay-awake.service")]
                 else:
-                    commands = [("systemctl", "--user", "enable", *[item[0] for item in UNITS[:3]])]
+                    commands = [("systemctl", "--user", "enable", *STARTUP_UNITS)]
                 for arguments in commands:
                     code, _ = await asyncio.to_thread(command, *arguments)
                     if code:

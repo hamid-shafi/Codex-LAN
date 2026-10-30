@@ -68,6 +68,8 @@ class PortableSetupTests(unittest.TestCase):
             self.assertFalse(any("restart" in command or "enable" in command for command in calls))
             unit = (home / ".config/systemd/user/codex-lan-server.service").read_text()
             self.assertIn(str(home), unit)
+            self.assertIn("Type=notify", unit)
+            self.assertIn("WatchdogSec=90s", unit)
             self.assertIn("Restart=always", unit)
 
     def test_running_host_is_not_reinstalled(self):

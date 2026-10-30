@@ -90,7 +90,7 @@ every lid or firmware sleep rule; screen blanking and locking are safe.
 For connection problems, check the LAN address, HTTPS port, firewall, and:
 
 ```bash
-systemctl --user status codex-lan-server.service codex-lan-health-monitor.service
+systemctl --user status codex-lan-server.service codex-lan-host-worker.service
 journalctl --user -u codex-lan-server.service -n 80 --no-pager
 ```
 

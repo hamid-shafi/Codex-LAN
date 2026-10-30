@@ -32,7 +32,7 @@ else:
 FILES = ("__init__.py", "activity.py", "auth.py", "provider_usage.py", "usage_estimator.py", "quota_accounting.py", "network.py", "https_setup.py", "host_setup.py", "relay_setup.py", "request_keys.py", "client_access.py", "model_registry.py", "runtime.py", "store.py", "worker.py", "server.py", "host_worker.py", "health_monitor.py", "media.py", "egress.py", "recovery.py", "transport.py", "systemd_watchdog.py", "companions.py", "migrate.py", "open_browser.py")
 SERVICE = "codex-lan-server.service"
 WORKER_SERVICE = "codex-lan-host-worker.service"
-HEALTH_MONITOR_SERVICE = "codex-lan-health-monitor.service"
+LEGACY_HEALTH_MONITOR_SERVICE = "codex-lan-health-monitor.service"
 UPDATE_SERVICE = "codex-lan-backend-update.service"
 RECOVERY_SERVICE = "codex-lan-backend-recovery.service"
 ACTIVATION_FLAG = "--activation-child"
@@ -103,59 +103,11 @@ def _systemd_command(*values):
     return " ".join(_systemd_quote(value) for value in values)
 
 
-def _health_monitor_unit(installation):
-    """CODEX: Keep liveness recovery outside the server process it observes."""
-    installation = Path(installation)
-    python = installation / "venv/bin/python"
-    code = installation / "code"
-    command = _systemd_command(
-        python, "-m", "codex_lan.health_monitor",
-        "--interval", "15", "--timeout", "5",
-        "--failure-threshold", "4", "--cooldown", "300",
-        "--active-stall-timeout", "60",
-    )
-    return (
-        "[Unit]\n"
-        "Description=Monitor and recover Codex LAN health\n"
-        f"After=network.target {SERVICE}\n\n"
-        "[Service]\n"
-        "Type=simple\n"
-        f"WorkingDirectory={str(code).replace('%', '%%')}\n"
-        f"ExecStart={command}\n"
-        "Restart=always\n"
-        "RestartSec=5\n"
-        "TimeoutStopSec=15\n"
-        "UMask=0077\n\n"
-        "[Install]\n"
-        "WantedBy=default.target\n"
-    ).encode()
-
-
-def _install_health_monitor_unit(*, installation=None, unit_directory=None,
-                                 runner=None, start=False):
-    """CODEX: Install and optionally start recovery only after activated code is healthy."""
-    installation = INSTALLATION if installation is None else Path(installation)
-    unit_directory = (Path.home() / ".config/systemd/user"
-                      if unit_directory is None else Path(unit_directory))
-    runner = subprocess.run if runner is None else runner
-    if installation.is_symlink() or unit_directory.is_symlink():
-        raise RuntimeError("The health-monitor installation path contains a symbolic link")
-    unit = unit_directory / HEALTH_MONITOR_SERVICE
-    if unit.is_symlink():
-        raise RuntimeError("The health-monitor service is a symbolic link")
-    _atomic_write(unit, _health_monitor_unit(installation), mode=0o644)
-    runner(["systemctl", "--user", "daemon-reload"], check=True, timeout=30)
-    runner(["systemctl", "--user", "enable", HEALTH_MONITOR_SERVICE], check=True, timeout=30)
-    if start:
-        runner(["systemctl", "--user", "restart", HEALTH_MONITOR_SERVICE], check=True, timeout=30)
-    return unit
-
-
 def _restart_policy_dropin(service):
-    """CODEX: Recover crashes while leaving guarded hang recovery to the health monitor."""
+    """CODEX: Let systemd supervise crashes and event-loop liveness without a polling process."""
     if service == SERVICE:
         return (
-            b"[Service]\nType=simple\nWatchdogSec=0\n"
+            b"[Service]\nType=notify\nNotifyAccess=main\nWatchdogSec=90s\n"
             b"TimeoutStartSec=300s\nTimeoutStopSec=20s\nRestart=always\nRestartSec=5\n"
         )
     return b"[Service]\nRestart=always\nRestartSec=5\n"
@@ -182,6 +134,15 @@ def _install_restart_policy_dropins(*, unit_directory=None, runner=None):
         installed.append(dropin)
     runner(["systemctl", "--user", "daemon-reload"], check=True, timeout=30)
     return tuple(installed)
+
+
+def _retire_legacy_health_monitor(*, runner=None):
+    """CODEX: Stop the superseded polling process only after native watchdog health is proven."""
+    runner = subprocess.run if runner is None else runner
+    return runner(
+        ["systemctl", "--user", "disable", "--now", LEGACY_HEALTH_MONITOR_SERVICE],
+        check=False, timeout=30,
+    )
 
 
 def _require_unaliased_directory(path, label, must_exist=True):
@@ -1095,7 +1056,7 @@ def _replace_with_retry(destination, contents):
 
 def activate(db, destination, contents, previous, action=service_action, check=healthy, database_backup=None,
              maintenance_file=None, rollback_directory=None, web_source=None, web_destination=None,
-             web_expected=None, rollback_check=None, recovery_helper=None):
+             web_expected=None, rollback_check=None, recovery_helper=None, prepare_start=None):
     """CODEX: Lock run admission until the idle server stops; never stop a recorded active run."""
     destination = Path(destination)
     if set(contents) != set(previous):
@@ -1208,6 +1169,8 @@ def activate(db, destination, contents, previous, action=service_action, check=h
                 _write_maintenance(marker, metadata)
             replace_files(destination, contents)
             _verify_file_set(destination, contents)
+            if prepare_start is not None:
+                prepare_start()
             action("start")
             if not check():
                 raise RuntimeError("Updated backend did not pass its health check")
@@ -1411,20 +1374,19 @@ def _run_activation(with_web=False, recovery_helper=None):
                         maintenance_file=marker,
                         rollback_directory=backup,
                         recovery_helper=recovery_record["path"],
+                        prepare_start=_install_restart_policy_dropins,
                         web_source=web_source, web_destination=destination / "web" if with_web else None):
                     try:
-                        _install_restart_policy_dropins()
+                        result = _retire_legacy_health_monitor()
+                        if getattr(result, "returncode", 0) not in (0, 1, 5):
+                            raise RuntimeError(
+                                f"systemd returned {result.returncode} while disabling the legacy monitor"
+                            )
                     except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
-                        # CODEX: The external monitor still protects the server; report incomplete unit migration.
-                        print(f"Warning: backend is healthy but legacy service restart policy was not upgraded: {exc}",
+                        # CODEX: Native supervision is already verified; a legacy process can be retired later.
+                        print(f"Warning: native watchdog is active but the legacy health monitor was not disabled: {exc}",
                               file=sys.stderr, flush=True)
-                    try:
-                        _install_health_monitor_unit(start=True)
-                    except (OSError, subprocess.SubprocessError, RuntimeError) as exc:
-                        # CODEX: The backend is already verified; preserve it and make monitor failure explicit.
-                        print(f"Warning: backend is healthy but its external health monitor did not start: {exc}",
-                              file=sys.stderr, flush=True)
-                    print("Updated backend activated and health check passed." +
+                    print("Updated backend activated with native systemd watchdog and health check passed." +
                           (" Matching browser bundle published." if with_web else ""), flush=True)
                     return
                 # CODEX: activate() rechecks under a write lock, so an extra idle grace only starves frequent chats.

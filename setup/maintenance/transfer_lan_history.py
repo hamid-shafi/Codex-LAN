@@ -27,7 +27,7 @@ import native_history_transfer as native
 
 FORMAT = "codex-lan-private-transfer-v1"
 TOOLS = ("transfer_lan_history.py", "lan_history_transfer.py", "native_history_transfer.py", "restore-history.sh")
-SERVICES = ("codex-lan-health-monitor.service", "codex-lan-host-worker.service", "codex-lan-server.service")
+SERVICES = ("codex-lan-host-worker.service", "codex-lan-server.service")
 MUTATORS = ("codex-lan-backend-update.service", "codex-lan-backend-recovery.service")
 README = """# Private Codex-LAN history transfer
 

@@ -157,11 +157,11 @@ asyncio.run(main())
 
 
 class ServiceUnitTests(unittest.TestCase):
-    def test_server_unit_leaves_hang_recovery_to_guarded_monitor(self):
+    def test_server_unit_uses_native_watchdog_and_always_restart(self):
         unit = service_unit("codex-lan-server", ["/tmp/python", "-m", "codex_lan.server"], Path("/tmp/code"))
-        self.assertNotIn("Type=notify\n", unit)
-        self.assertNotIn("NotifyAccess=main\n", unit)
-        self.assertNotIn("WatchdogSec=", unit)
+        self.assertIn("Type=notify\n", unit)
+        self.assertIn("NotifyAccess=main\n", unit)
+        self.assertIn("WatchdogSec=90s\n", unit)
         self.assertIn("TimeoutStartSec=300s\n", unit)
         self.assertIn("TimeoutStopSec=20\n", unit)
         self.assertIn("Restart=always\n", unit)

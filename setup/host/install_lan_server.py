@@ -28,9 +28,12 @@ def quote(value):
 
 def service_unit(name, command, code):
     after = ("network.target codex-lan-server.service"
-             if name in {"codex-lan-host-worker", "codex-lan-health-monitor"}
+             if name == "codex-lan-host-worker"
              else "network.target")
-    server_policy = "TimeoutStartSec=300s\n" if name == "codex-lan-server" else ""
+    server_policy = (
+        "Type=notify\nNotifyAccess=main\nWatchdogSec=90s\nTimeoutStartSec=300s\n"
+        if name == "codex-lan-server" else ""
+    )
     stop_timeout = "20" if name == "codex-lan-server" else "15"
     quote(code)
     return (
@@ -48,8 +51,7 @@ SETUP_FILES = (
     "setup_lan_client.py", "launch_lan_client.py", "direct_client.py",
     "requirements-lan.txt", "deploy_lan_backend.py", "deploy_lan_web.py", "backup_lan_history.py",
 )
-LAN_SERVICES = ("codex-lan-server.service", "codex-lan-host-worker.service",
-                "codex-lan-health-monitor.service")
+LAN_SERVICES = ("codex-lan-server.service", "codex-lan-host-worker.service")
 
 
 def resolve_codex(value=None):
@@ -205,10 +207,6 @@ def main(argv=None):
                                   "--token-file", str(token), "--state-dir", str(worker_home),
                                   "--route-state", str(root / "egress.sqlite3"),
                                   "--cwd", str(Path.home()), "--codex", str(codex)],
-        "codex-lan-health-monitor": [str(python), "-m", "codex_lan.health_monitor",
-                                     "--interval", "15", "--timeout", "5",
-                                     "--failure-threshold", "4", "--cooldown", "300",
-                                     "--active-stall-timeout", "60"],
     }
     if args.keep_awake:
         if not shutil.which("systemd-inhibit"):
