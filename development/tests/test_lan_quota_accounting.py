@@ -170,6 +170,23 @@ class QuotaAccountingTests(unittest.TestCase):
             self.store.record_usage(tiny["id"], count, 0, count)
         self.assertEqual(sum(self.credit_events(tiny["id"])), 5)
 
+    def test_message_exposes_derived_response_percent_without_account_capacity(self):
+        room_a, _room_b, run, _run_b = self.calibrate_two_clients()
+        self.store.finish_run(run["id"], "completed", "Done")
+        with self.store.db:
+            self.store.db.execute(
+                "UPDATE runs SET created_at=?,finished_at=? WHERE id=?",
+                (self.now - 10, self.now, run["id"]),
+            )
+        message = self.store.list_messages(self.a_id, room_a["id"])[-1]
+        capacity = self.store.quota_report(self.admin_id)["calibration"]["capacity_credits_micros"]
+        self.assertAlmostEqual(
+            message["estimated_account_usage_percent"],
+            message["estimated_usage_credits_micros"] * 100 / capacity,
+        )
+        own = self.store.device_quota(self.a_id)
+        self.assertNotIn("capacity_credits_micros", str(own))
+
     def test_concurrent_clients_weighted_once_and_cap_edit_does_not_reset_spend(self):
         _, _, a, b = self.calibrate_two_clients()
         for owner in (self.a_id, self.b_id):

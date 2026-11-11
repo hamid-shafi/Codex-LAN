@@ -2980,9 +2980,10 @@ function responseUsage(message, run) {
   const windowEnd = timestamp(quota?.window?.ends_at);
   // CODEX: Never apply this week's calibration to past or reset-spanning responses, or call it an official charge.
   const sameWindow = start > 0 && end >= start && start >= windowStart && end < windowEnd && Date.now() < windowEnd;
-  const percent = credits !== null && capacity > 0 && windowStart > 0 && sameWindow &&
+  const reportedPercent = number(message.estimated_account_usage_percent);
+  const percent = reportedPercent ?? (credits !== null && capacity > 0 && windowStart > 0 && sameWindow &&
     quota.calibration.status === "estimated" && quota.calibration.refresh_status === "fresh" &&
-    run?.model !== "gpt-5.3-codex-spark" ? credits / capacity * 100 : null;
+    run?.model !== "gpt-5.3-codex-spark" ? credits / capacity * 100 : null);
   return { input, cached, output, total, credits, percent, active: activeRun(run) };
 }
 

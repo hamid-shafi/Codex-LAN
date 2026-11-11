@@ -68,6 +68,12 @@ class LanMessageUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(self.page.locator(".message-usage-body").first).to_contain_text("Unknown usage is not zero")
         self.assertFalse(self.errors, self.errors)
 
+        derived = await self.page.evaluate("""() => responseUsage(
+            {role:'assistant', estimated_account_usage_percent: 0.125},
+            {status:'completed'}
+        ).percent""")
+        self.assertEqual(derived, 0.125)
+
     async def test_current_window_estimate_is_shown_beside_duration_and_tokens(self):
         await self.login(self.admin)
         article = self.page.locator(".message.assistant").first

@@ -385,6 +385,28 @@ class QuotaAccounting:
                        "using_last_known": status == "estimated" and refresh_stale}
         return window, calibration
 
+    def response_account_percent(self, run, credits, context=None):
+        """Return a response-only account estimate without exposing the account capacity."""
+        if (isinstance(credits, bool) or not isinstance(credits, int) or credits < 0
+                or provider_limit_id(run["model"]) != REGULAR_LIMIT_ID):
+            return None
+        window, calibration = self.summary() if context is None else context
+        capacity = calibration.get("effective_capacity_credits_micros")
+        if (window is None or calibration.get("status") != "estimated"
+                or calibration.get("refresh_status") != "fresh"
+                or isinstance(capacity, bool) or not isinstance(capacity, int) or capacity <= 0):
+            return None
+        now = time.time()
+        started = run["created_at"]
+        finished = run["finished_at"]
+        if finished is None and run["status"] in {"queued", "running"}:
+            finished = now
+        if (not number(started) or not number(finished) or finished < started
+                or not window["starts_at"] <= started
+                or finished >= window["ends_at"] or now >= window["ends_at"]):
+            return None
+        return float(Decimal(credits) * 100 / Decimal(capacity))
+
     def _unknown_usage(self, owner_id, start, end):
         rows = self.db.execute(
             "SELECT r.id,r.status,r.model,r.speed,r.finished_at,"

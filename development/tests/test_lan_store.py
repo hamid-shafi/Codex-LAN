@@ -897,7 +897,7 @@ class LanStoreTests(unittest.TestCase):
                     self.store.db.set_trace_callback(None)
                 self.assertEqual(messages, wanted)
                 reads = [sql for sql in statements if sql.lstrip().upper().startswith("SELECT")]
-                self.assertLessEqual(len(reads), 7)
+                self.assertLessEqual(len(reads), 8)
         self.assertEqual(expected[0]["attachment_ids"], attachments)
         self.assertEqual(expected[1]["run_error"], "Fixture interruption")
         self.assertEqual(expected[1]["token_usage"], 120)

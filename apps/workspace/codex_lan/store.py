@@ -1094,7 +1094,7 @@ class Store(CompanionStoreMixin):
             return messages
         placeholders = ",".join("?" for _ in run_ids)
         runs = {row["id"]: row for row in self.db.execute(
-            "SELECT id,status,error FROM runs WHERE id IN (" + placeholders + ")", run_ids,
+            "SELECT id,status,error,model,created_at,finished_at FROM runs WHERE id IN (" + placeholders + ")", run_ids,
         )}
         ledgers = {row["run_id"]: row for row in self.db.execute(
             "SELECT * FROM usage_ledger WHERE run_id IN (" + placeholders + ")", run_ids,
@@ -1102,6 +1102,7 @@ class Store(CompanionStoreMixin):
         estimates = {row["run_id"]: row["credits_micros"] for row in self.db.execute(
             "SELECT run_id,credits_micros FROM quota_usage WHERE run_id IN (" + placeholders + ")", run_ids,
         )}
+        quota_context = self.quota.summary()
         for result in messages:
             if result["role"] != "assistant":
                 continue
@@ -1112,6 +1113,9 @@ class Store(CompanionStoreMixin):
             result["usage"] = self._row(ledger) if ledger else None
             result["token_usage"] = ledger["total_tokens"] if ledger else None
             result["estimated_usage_credits_micros"] = estimates.get(result["run_id"])
+            result["estimated_account_usage_percent"] = self.quota.response_account_percent(
+                run, estimates.get(result["run_id"]), quota_context
+            ) if run else None
         return messages
 
     def list_messages(
