@@ -2986,6 +2986,13 @@ function responseUsage(message, run) {
   return { input, cached, output, total, credits, percent, active: activeRun(run) };
 }
 
+function responseUsagePercent(value) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return "";
+  return value > 0 && value < .0001
+    ? "<0.0001"
+    : value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
 function updateResponseUsage(article, message, run) {
   const disclosure = article.querySelector(".message-usage");
   if (!disclosure) return;
@@ -2994,8 +3001,7 @@ function updateResponseUsage(article, message, run) {
   if (disclosure.dataset.signature === signature) return;
   disclosure.dataset.signature = signature;
   const reported = [usage.input, usage.cached, usage.output, usage.total].some((value) => value !== null);
-  const percentage = usage.percent === null ? "" : usage.percent > 0 && usage.percent < .0001
-    ? "<0.0001" : usage.percent.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  const percentage = responseUsagePercent(usage.percent);
   const label = percentage ? `Usage · ≈${percentage}% equivalent` : usage.credits !== null
     ? `Usage · ${estimatedUnits(usage.credits)} units` : reported ? "Usage · tokens" : "Usage · awaiting report";
   disclosure.querySelector("summary").textContent = label;
@@ -3072,6 +3078,8 @@ function updateMessageNode(article, message, run = null) {
     }
     const tokens = message.token_usage ?? run?.token_usage ?? run?.usage?.total_tokens ?? run?.usage?.totalTokens;
     if (tokens !== undefined && tokens !== null && (!presentation.emptyFailure || numeric(tokens) > 0)) metrics.push(`${count(tokens)} tokens`);
+    const percentage = responseUsagePercent(responseUsage(message, run).percent);
+    if (percentage) metrics.push(`≈${percentage}% usage`);
   }
   article.querySelector(".message-metrics").textContent = metrics.join(" · ");
   updateResponseUsage(article, message, run);

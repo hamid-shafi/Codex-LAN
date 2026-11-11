@@ -68,6 +68,30 @@ class LanMessageUsageBrowserTests(unittest.IsolatedAsyncioTestCase):
         await expect(self.page.locator(".message-usage-body").first).to_contain_text("Unknown usage is not zero")
         self.assertFalse(self.errors, self.errors)
 
+    async def test_current_window_estimate_is_shown_beside_duration_and_tokens(self):
+        await self.login(self.admin)
+        article = self.page.locator(".message.assistant").first
+        await self.page.evaluate("""() => {
+            const now = Date.now() / 1000;
+            state.myQuota = {
+                window: {starts_at: now - 1000, ends_at: now + 1000},
+                calibration: {status: 'estimated', refresh_status: 'fresh',
+                    effective_capacity_credits_micros: 1000000}
+            };
+            const cache = roomState();
+            const message = cache.messages.find(item => item.role === 'assistant');
+            const key = String(message.run_id);
+            const run = {...(cache.runs.get(key) || message.run || {})};
+            message.estimated_usage_credits_micros = 1234;
+            run.started_at = now - 20;
+            run.finished_at = now - 10;
+            run.model = 'gpt-6-astra';
+            cache.runs.set(key, run);
+            renderCurrent();
+        }""")
+        await expect(article.locator(".message-metrics")).to_contain_text("300 tokens · ≈0.1234% usage")
+        self.assertFalse(self.errors, self.errors)
+
     async def test_room_actions_are_quiet_pin_is_rightmost_and_keyboard_reveals_them(self):
         await self.login(self.admin)
         row = self.page.locator(".room-row.active")
